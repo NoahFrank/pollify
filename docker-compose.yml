@@ -1,0 +1,10 @@
+node:
+    build: .
+    links:
+        - redis
+    ports:
+        - "3000"
+redis:
+    image: redis
+    ports:
+        - "6379"
