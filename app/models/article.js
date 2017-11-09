@@ -9,4 +9,3 @@ function Article(opts) {
 }
 
 module.exports = Article;
-

@@ -1,5 +1,15 @@
 extends layout
 
 block content
-    h1= title
+    h1 #{title}
     p Welcome to #{title}
+    form(name="join", method="get", action="/join")
+        | Room:
+        input(type="text", name="roomId")
+        input(type="submit", value="#{join}")
+    button(type="button") #{host}
+    
+    script.
+        function join(roomId) {
+            console.log("Testing: " + roomId);
+        }

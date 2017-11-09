@@ -21,11 +21,8 @@ module.exports = (app) => {
 };
 
 router.get('/', (req, res, next) => {
-    log.info("starting meme");
-    let room = new Room('kappaface-no-apikey');
-    res.render('index', {
-        title: 'Generator-Express MVC'
-    });
+    console.log("Testing something.");
+    res.render('index', { title: 'Pollify', join: 'Join', host: 'Host', roomId: "Room Id" });
 });
 
 router.get('/:roomId', (req, res, next) => {
@@ -52,8 +49,13 @@ router.post('/:roomId/skip', (req, res, next) => {
     res.render('index', { title: 'Express' });
 });
 
-router.post('/join/:roomId', (req, res, next) => {
-    res.render('index', { title: 'Express' });
+router.post('/join', (req, res, next) => {
+    let roomId = req.query.roomId;
+    if (roomId !== undefined) {
+        res.redirect("/#{roomId}");
+    } else {
+        res.sendStatus(400);
+    }
 });
 
 router.post('/:roomId/add/:songId', (req, res, next) => {
