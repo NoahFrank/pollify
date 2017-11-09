@@ -16,29 +16,35 @@ const log = require('winston');
 class Room {
 
     constructor (apiKey) {
-
-        log.info(`Generated name: ${name} for your room`);
         // TODO Create custom "dumb" dictionary so we don't have to spell 'efficacious'
-
-        let taken = client.existsAsync('kappa').then( (res) => {
-            return Boolean(res);
-        });
-
-        log.info(`Wut: ${taken}`);
-
+        // TODO check for collision, LUL
+        this.name = Moniker.generator([Moniker.adjective, Moniker.noun]).choose();
         this.apiKey = apiKey;
         this.songQueue = new TinyQueue([], (a, b) => {
             return a.votes > b.votes ? -1 : (a.votes < b.votes ? 1 : 0);
         });
     }
 
-    generateName(limit, depth=0) {
-        return new Promise( (resolve, reject) => {
-            let name = Moniker.generator([Moniker.adjective, Moniker.noun]).choose();
-            client.exists()
-        });
-    }
-
+    // I hate my life - Noah
+    // generateName(depth=0, limit=100) {
+    //     if (depth >= limit) {
+    //         return new Promise( (resolve, reject) => {reject("Hit name generation limit")} );
+    //     }
+    //     return new Promise( (resolve, reject) => {
+    //         let name = Moniker.generator([Moniker.adjective, Moniker.noun]).choose();
+    //         client.exists(name, (err, result) => {
+    //             if (err) {
+    //                 reject(err);
+    //             } else {
+    //                 if ( Boolean(result) ) {
+    //                     resolve(name);
+    //                 } else {
+    //                     return this.generateName(depth++, limit);
+    //                 }
+    //             }
+    //         });
+    //     });
+    // }
 }
 
 module.exports = Room;

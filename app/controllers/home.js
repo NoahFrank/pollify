@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const Room = require('../models/room');
+const Track = require('../models/track');
 
 // Setup Redis connection
 const redis = require("redis");
@@ -21,8 +22,19 @@ module.exports = (app) => {
 };
 
 router.get('/', (req, res, next) => {
+<<<<<<< HEAD
     console.log("Testing something.");
     res.render('index', { title: 'Pollify', join: 'Join', host: 'Host', roomId: "Room Id" });
+=======
+    let room = new Room('kappaface-no-apikey');
+
+    let track = new Track("4zGvb8hxGLB2jEPRFiRRqw");
+
+    // console.log(require('../models/spotify'));
+    res.render('index', {
+        title: room.name
+    });
+>>>>>>> fb2c478b135405ee92d36ef33d350cd9d503c86f
 });
 
 router.get('/:roomId', (req, res, next) => {
