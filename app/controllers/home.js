@@ -33,7 +33,19 @@ router.get('/', (req, res, next) => {
 });
 
 router.get('/:roomId', (req, res, next) => {
-
+    let roomId = req.params.roomId;
+    console.log(`testing ${roomId}`);
+    client.get(roomId, (err, reply) => {
+        if (reply === null) {
+            // doesn't exist
+            log.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
+        } else {
+            // render template passing Room object
+            log.info(`Rendering ${roomId} with ${reply}`);
+            res.render('room', reply);
+        }
+    });
 });
 
 router.post('/:roomId/vote', (req, res, next) => {
@@ -57,10 +69,21 @@ router.post('/:roomId/skip', (req, res, next) => {
 });
 
 router.post('/join', (req, res, next) => {
-    let roomId = req.query.roomId;
+    let roomId = req.body.roomId;
+    console.log(`WHAT AM I TRYING TO DO RIGHT NOW ${roomId}`);
     if (roomId !== undefined) {
-        res.redirect("/#{roomId}");
+        client.exists(roomId, (err, result) => {
+            console.log(`${result}`);
+            if (result == 1) {
+                log.info(`Connection to ${roomId} successful`);
+                res.redirect(`/${roomId}`);
+            } else {
+                log.error(`Attempted to join ${roomId} but room doesn't exist`);
+                res.sendStatus(404);
+            }
+        });
     } else {
+        log.error(`Connection to ${roomId} failed`);
         res.sendStatus(400);
     }
 });
