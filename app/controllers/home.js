@@ -1,21 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const Article = require('../models/article');
+
+const Room = require('../models/room');
+
+// Setup Redis connection
+const redis = require("redis");
+const client = redis.createClient();
+
+// Setup logging
+const log = require('winston');
+
+// Print Redis errors
+client.on("error", (err) => {
+    log.error("Redis Error " + err);
+});
+
 
 module.exports = (app) => {
     app.use('/', router);
 };
 
 router.get('/', (req, res, next) => {
-    const articles = [new Article(), new Article()];
+    log.info("starting meme");
+    let room = new Room('kappaface-no-apikey');
     res.render('index', {
-        title: 'Generator-Express MVC',
-        articles: articles
+        title: 'Generator-Express MVC'
     });
-});
-
-router.get('/', (req, res, next) => {
-    res.render('index', { title: 'Express' });
 });
 
 router.get('/:roomId', (req, res, next) => {
