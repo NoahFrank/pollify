@@ -26,8 +26,7 @@
     "redis": "^2.8.0",
     "request": "^2.83.0",
     "serve-favicon": "^2.3.0",
-    "spotify-web-api-node": "^2.5.0",
-    "tinyqueue": "^1.2.3"
+    "spotify-web-api-node": "^2.5.0"
   },
   "devDependencies": {
     "bluebird": "^3.5.1",

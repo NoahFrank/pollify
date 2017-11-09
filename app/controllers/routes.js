@@ -25,6 +25,9 @@ module.exports = (app) => {
 router.get('/', (req, res, next) => {
     let room = new Room('kappaface-no-apikey');
 
+    // TODO: Be careful on how we store the JS class in Redis
+    // Source: https://medium.com/@stockholmux/store-javascript-objects-in-redis-with-node-js-the-right-way-1e2e89dbbf64
+
     let track = new Track("4zGvb8hxGLB2jEPRFiRRqw");
 
     // console.log(require('../models/spotify'));
@@ -77,15 +80,33 @@ router.post('/:roomId/play', (req, res, next) => {
 });
 
 router.post('/:roomId/skip', (req, res, next) => {
-    spotify.skip().then( (result) => {
-        res.redirect(`/${res.params.roomId}`);
-    }).catch( (err) => {
-        log.error(err);
-        res.status(500).send("Server error: Failed to skip playback.");
-    });
+    // TODO: I am starting to think fully using a spotify playlist would be better than mirror state locally
+    // TODO: because you can swap the order of songs with the API, and we will be using a shared resource so we will
+    // TODO: encounter less concurrency issues.  This will increase the overall reliability and consistent behavior
+    // TODO: mitigating race conditions like removing a song and skipping a song at the same time.  This may cost us
+    // TODO: performance but does it really? Does it really?  What are we losing?  We can still grab the current playlist
+    // TODO: and render our own voting view of it.  We can still pause/play, the only thing we have to mirror is the voting.
+    // TODO: Once voting is done, we recalculate the queue, and make sure the spotify queue is the same.  That could be
+    // TODO: an issue though, because if we have many swaps, we need to write a custom (insertion) sorting function that
+    // TODO: logs all the swaps performed so they can be mirrored on the spotify side.
+
+    Promise.all([client.get(res.params.roomId), spotify.skip()])
+        .then( (results) => {
+            let room = results[0];
+            let skipStatus = results[1];
+
+            room.skipTrack(); // Assumes current spotify song, could be painpoint
+
+            res.redirect(`/${res.params.roomId}`);
+        }).catch( (err) => {
+            log.error(err);
+            res.status(500).send("Server error: Failed to skip playback.");
+            // TODO: Mirror error in state, put song back?
+        });
 });
 
 router.post('/:roomId/back', (req, res, next) => {
+    // TODO: Mirror state locally in Redis
     spotify.previous().then( (result) => {
         res.redirect(`/${res.params.roomId}`);
     }).catch( (err) => {
@@ -112,11 +133,21 @@ router.post('/join', (req, res, next) => {
     }
 });
 
-router.post('/:roomId/add/:songId', (req, res, next) => {
+router.post('/:roomId/add/:trackId', (req, res, next) => {
+    client.get(res.params.trackId, (err, result) => {
+        if (err) {
+            log.error(err);
+            res.status(500).send("Server error: Failed to add track.");
+        } else {
+            result.addTrack(new Track(res.body.track, "Bob")); // Assumes body gives full track data from search
+
+        }
+    });
+
     res.render('index', { title: 'Express' });
 });
 
-router.post('/:roomId/remove/:songId', (req, res, next) => {
+router.post('/:roomId/remove/:trackId', (req, res, next) => {
     res.render('index', { title: 'Express' });
 });
 
