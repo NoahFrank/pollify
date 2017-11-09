@@ -34,7 +34,6 @@ router.get('/', (req, res, next) => {
 
 router.get('/:roomId', (req, res, next) => {
     let roomId = req.params.roomId;
-    console.log(`testing ${roomId}`);
     client.get(roomId, (err, reply) => {
         if (reply === null) {
             // doesn't exist
@@ -70,10 +69,8 @@ router.post('/:roomId/skip', (req, res, next) => {
 
 router.post('/join', (req, res, next) => {
     let roomId = req.body.roomId;
-    console.log(`WHAT AM I TRYING TO DO RIGHT NOW ${roomId}`);
     if (roomId !== undefined) {
         client.exists(roomId, (err, result) => {
-            console.log(`${result}`);
             if (result == 1) {
                 log.info(`Connection to ${roomId} successful`);
                 res.redirect(`/${roomId}`);
