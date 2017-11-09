@@ -5,7 +5,10 @@ const log = require('winston');
 
 class Track {
 
-    constructor (track) {
+    constructor (track, suggestor) {
+        this.votes = 0;
+        this.suggestor = suggestor;
+
         this.id = track.id;
         this.name = track.name;
         this.album = track.album;

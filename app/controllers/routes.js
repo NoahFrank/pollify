@@ -3,6 +3,7 @@ const router = express.Router();
 
 const Room = require('../models/room');
 const Track = require('../models/track');
+const spotify = require('../models/spotify');
 
 // Setup Redis connection
 const redis = require("redis");
@@ -48,23 +49,49 @@ router.get('/:roomId', (req, res, next) => {
 });
 
 router.post('/:roomId/vote', (req, res, next) => {
-    res.render('index', { title: 'Express' });
+    res.body.trackId.votes++; // TODO: Assumes trackId being sent in body
+    res.redirect(`/${res.params.roomId}`);
 });
 
 router.post('/:roomId/unvote', (req, res, next) => {
-    res.render('index', { title: 'Express' });
+    res.body.trackId.votes--; // TODO: Assumes trackId being sent in body
+    res.redirect(`/${res.params.roomId}`);
 });
 
 router.post('/:roomId/pause', (req, res, next) => {
-    res.render('index', { title: 'Express' });
+    spotify.pause().then( (result) => {
+        res.redirect(`/${res.params.roomId}`);
+    }).catch( (err) => {
+        log.error(err);
+        res.status(500).send("Server error: Failed to pause playback.");
+    });
 });
 
 router.post('/:roomId/play', (req, res, next) => {
-    res.render('index', { title: 'Express' });
+    spotify.play().then( (result) => {
+        res.redirect(`/${res.params.roomId}`);
+    }).catch( (err) => {
+        log.error(err);
+        res.status(500).send("Server error: Failed to play playback.");
+    });
 });
 
 router.post('/:roomId/skip', (req, res, next) => {
-    res.render('index', { title: 'Express' });
+    spotify.skip().then( (result) => {
+        res.redirect(`/${res.params.roomId}`);
+    }).catch( (err) => {
+        log.error(err);
+        res.status(500).send("Server error: Failed to skip playback.");
+    });
+});
+
+router.post('/:roomId/back', (req, res, next) => {
+    spotify.previous().then( (result) => {
+        res.redirect(`/${res.params.roomId}`);
+    }).catch( (err) => {
+        log.error(err);
+        res.status(500).send("Server error: Failed to back playback.");
+    });
 });
 
 router.post('/join', (req, res, next) => {
