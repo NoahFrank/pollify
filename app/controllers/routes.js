@@ -31,21 +31,24 @@ router.get('/', (req, res, next) => {
 
     // console.log(require('../models/spotify'));
     res.render('index', {
-        title: room.name
+        title: room.name,
+        join: "Submit"
     });
 });
 
 router.get('/:roomId', (req, res, next) => {
     let roomId = req.params.roomId;
-    client.get(roomId, (err, reply) => {
-        if (reply === null) {
+    client.get(roomId, (err, room) => {
+        if (room === null) {
             // doesn't exist
             log.error(`${roomId} doesn't exist`);
             res.sendStatus(404);
         } else {
             // render template passing Room object
-            log.info(`Rendering ${roomId} with ${reply}`);
-            res.render('room', reply);
+            log.info(`Rendering ${roomId} with ${room}`);
+            res.render('room', {
+                roomId: room
+            });
         }
     });
 });
