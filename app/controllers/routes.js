@@ -7,7 +7,7 @@ const spotify = require('../models/spotify');
 
 // Setup Redis connection
 const redis = require("redis");
-const client = redis.createClient();
+const client = redis.createClient(6379, '0.0.0.0');
 
 // Setup logging
 const log = require('winston');
@@ -18,9 +18,8 @@ client.on("error", (err) => {
 });
 
 
-module.exports = (app) => {
-    app.use('/', router);
-};
+module.exports = router;
+
 
 router.get('/', (req, res, next) => {
     let room = new Room('kappaface-no-apikey');

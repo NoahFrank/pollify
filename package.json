@@ -24,6 +24,7 @@
     "moniker": "^0.1.2",
     "morgan": "^1.6.1",
     "redis": "^2.8.0",
+    "redis-server": "^1.1.0",
     "request": "^2.83.0",
     "serve-favicon": "^2.3.0",
     "spotify-web-api-node": "^2.5.0"
