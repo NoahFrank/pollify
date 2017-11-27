@@ -3,7 +3,16 @@ extends layout
 block content
     h1 #{title}
     p Welcome to #{title}
-    form(name="join", method="post", action="/join")
-        | Room:
-        input(type="text", name="roomId")
-        input(type="submit", value="#{join}")
+    p
+        form(name="join", method="post", action="/join")
+            | Join Room:
+            input(type="text", name="roomId")
+            input(type="submit", value="Join")
+
+    p
+        form(name="create", method="post", action="/create")
+            | Create Room:
+            | <br>
+            | Please enter your Spotify API Key:
+            input(type="text", name="apiKey")
+            input(type="submit", value="Create")

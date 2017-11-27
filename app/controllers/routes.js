@@ -7,7 +7,7 @@ const spotify = require('../models/spotify');
 
 // Setup Redis connection
 const redis = require("redis");
-const client = redis.createClient(6379, '0.0.0.0');
+const client = redis.createClient();
 
 // Setup logging
 const log = require('winston');
@@ -18,8 +18,9 @@ client.on("error", (err) => {
 });
 
 
-module.exports = router;
-
+module.exports = (app) => {
+    app.use('/', router);
+};
 
 router.get('/', (req, res, next) => {
     let room = new Room('kappaface-no-apikey');
@@ -31,8 +32,7 @@ router.get('/', (req, res, next) => {
 
     // console.log(require('../models/spotify'));
     res.render('index', {
-        title: room.name,
-        join: "Submit"
+        title: room.name
     });
 });
 
@@ -46,8 +46,9 @@ router.get('/:roomId', (req, res, next) => {
         } else {
             // render template passing Room object
             log.info(`Rendering ${roomId} with ${room}`);
+            room = JSON.parse(room);
             res.render('room', {
-                roomId: room
+                roomId: room.name
             });
         }
     });
@@ -133,6 +134,20 @@ router.post('/join', (req, res, next) => {
         log.error(`Connection to ${roomId} failed`);
         res.sendStatus(400);
     }
+});
+
+router.post('/create', (req, res, next) => {
+    let apiKey = req.body.apiKey;
+    let room = new Room(apiKey);
+    client.set(room.name, JSON.stringify(room), (err, result) => {
+        if (result) {
+            log.info(`Connection to ${room.name} successful`);
+            res.redirect(`/${room.name}`);
+        } else {
+            log.error(`Attempted to join ${room.name} but room doesn't exist`);
+            res.sendStatus(404);
+        }
+    });
 });
 
 router.post('/:roomId/add/:trackId', (req, res, next) => {
