@@ -1,0 +1,9 @@
+extends layout
+
+block content
+    h1 Search: #{searchQuery}
+    br
+
+    ul
+    each val in results
+        li= val.name + "; " + val.album.name

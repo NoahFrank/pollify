@@ -164,6 +164,39 @@ router.post('/:roomId/add/:trackId', (req, res, next) => {
     res.render('index', { title: 'Express' });
 });
 
+router.post('/:roomId/search/', (req, res, next) => {
+    // 1. Get room
+    let roomId = req.params.roomId;
+    let trackSearch = req.body.trackSearch;
+    client.get(roomId, (err, roomString) => {
+        if (roomString === null) {
+            // doesn't exist
+            log.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
+        } else {
+            log.info(`Found Room ${roomString}`);
+            let room = JSON.parse(roomString);
+            // 2. Create spotify instance off room
+            spotify.setAccessToken(room.apiKey);
+            // 3. Query spotify
+            spotify.searchTracks(trackSearch)
+                .then(function(data) {
+                    // 4. How to return results?
+                    res.render('searchResults', {
+                        // This doesn't feel great, but not sure how else to
+                        // render the search results dynamically without using some
+                        // sort of javascript on the frontend to make this query
+                        searchQuery: trackSearch,
+                        results: data.body.tracks.items
+                    });
+                }, function(err) {
+                    log.error(err);
+                    res.status(500).send("Server error: Failed to find track.");
+                });
+        }
+    });
+})
+
 router.post('/:roomId/remove/:trackId', (req, res, next) => {
     res.render('index', { title: 'Express' });
 });
