@@ -1,9 +1,22 @@
-extends layout
+extends roomBase
 
-block content
-    h1 Search: #{searchQuery}
-    br
+block roomContent
+    div
+        h1 Search: #{searchQuery}
 
-    ul
-    each val in results
-        li= val.name + "; " + val.album.name
+    div
+        h2 Results:
+        table
+            thead
+                tr
+                    th Song Name
+                    th Albumn
+                    th Artist
+                    th Length
+            tbody
+                each track in results
+                    tr
+                        td= track.name
+                        td= track.albumName
+                        td= track.artistName
+                        td= track.duration

@@ -181,15 +181,40 @@ router.post('/:roomId/search/', (req, res, next) => {
             // 3. Query spotify
             spotify.searchTracks(trackSearch)
                 .then(function(data) {
-                    // 4. How to return results?
+                    let tracks = data.body.tracks.items;
+                    // 4. Manipulate response to an output we are going to display
+                    let trackSearchOutput = [];
+                    for (var track of tracks) {
+                        let manipulatedTrack = {};
+                        manipulatedTrack.name = track.name;
+                        manipulatedTrack.albumName = track.album.name;
+                        let seconds = track.duration_ms/1000;
+                        let minutes = parseInt(seconds / 60);
+                        let secondsLeftOver = (seconds%60).toFixed(0);
+                        manipulatedTrack.duration = `${minutes}:${secondsLeftOver}`;  // TODO: Convert this to human readable
+                        manipulatedTrack.artistName = "";
+                        for (var i = 0; i < track.artists.length; i++) {
+                            artist = track.artists[i];
+                            manipulatedTrack.artistName += artist.name;
+                            manipulatedTrack.artistName += ", " ? track.artists.length-1 == i : '';
+                        }
+                        trackSearchOutput.push(manipulatedTrack);
+                    }
+                    // 5. How to return results
                     res.render('searchResults', {
                         // This doesn't feel great, but not sure how else to
                         // render the search results dynamically without using some
                         // sort of javascript on the frontend to make this query
                         searchQuery: trackSearch,
-                        results: data.body.tracks.items
+                        results: trackSearchOutput,
+                        roomId: room.name
                     });
                 }, function(err) {
+                    // TODO: handle this error more elegantly?
+                    log.error(err);
+                    res.status(500).send("Server error: Failed to find track.");
+                })
+                .catch(function(err) {
                     log.error(err);
                     res.status(500).send("Server error: Failed to find track.");
                 });

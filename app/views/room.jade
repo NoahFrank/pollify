@@ -1,11 +1,1 @@
-extends layout
-
-block content
-    h1 Welcome to #{roomId}
-    p Please queue a song!
-
-    p
-        form(name="spotifySearch", method="post", action="/#{roomId}/search")
-            | Search for a Song:
-            input(type="text", name="trackSearch")
-            input(type="submit", value="Create")
+extends roomBase
