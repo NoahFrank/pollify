@@ -139,7 +139,7 @@ router.post('/join', (req, res, next) => {
 router.post('/create', (req, res, next) => {
     let apiKey = req.body.apiKey;
     let room = new Room(apiKey);
-    client.set(room.name, JSON.stringify(room), (err, result) => {
+    room.save((err, result) => {
         if (result) {
             log.info(`Connection to ${room.name} successful`);
             res.redirect(`/${room.name}`);
@@ -150,18 +150,40 @@ router.post('/create', (req, res, next) => {
     });
 });
 
-router.post('/:roomId/add/:trackId', (req, res, next) => {
-    client.get(res.params.trackId, (err, result) => {
+router.get('/:roomId/add/:trackId', (req, res, next) => {
+    // 1. Get room
+    room = Room.get(req.params.roomId, (err, roomObj) => {
         if (err) {
             log.error(err);
-            res.status(500).send("Server error: Failed to add track.");
+            res.status(500).send("Server error: Failed to find track.");
         } else {
-            result.addTrack(new Track(res.body.track, "Bob")); // Assumes body gives full track data from search
-
+            // 2. Create spotify instance off room
+            spotify.setAccessToken(roomObj.apiKey);
+            // 3. Re-query Spotify to get this track based on its ID
+            spotify.getTrack([req.params.trackId])
+                .then(function(data) {
+                    // 2. Attempt to add to the room's track list
+                    roomObj.addTrack(new Track(data.body, "Bob")); // Assumes body gives full track data from search
+                    roomObj.save((err, result) => {
+                        if (err) {
+                            log.error(err);
+                            res.status(500).send("Server error: Failed to find track.");
+                        } else {
+                            // 3. Return user to room home
+                            res.redirect(`/${roomObj.name}`);
+                        }
+                    })
+                }, function(err) {
+                    // TODO: handle this error more elegantly?
+                    log.error(err);
+                    res.status(500).send("Server error: Failed to find track.");
+                })
+                .catch(function(err) {
+                    log.error(err);
+                    res.status(500).send("Server error: Failed to find track.");
+                });
         }
     });
-
-    res.render('index', { title: 'Express' });
 });
 
 router.post('/:roomId/search/', (req, res, next) => {
@@ -186,6 +208,7 @@ router.post('/:roomId/search/', (req, res, next) => {
                     let trackSearchOutput = [];
                     for (var track of tracks) {
                         let manipulatedTrack = {};
+                        manipulatedTrack.id = track.id;
                         manipulatedTrack.name = track.name;
                         manipulatedTrack.albumName = track.album.name;
                         let seconds = track.duration_ms/1000;
@@ -198,6 +221,8 @@ router.post('/:roomId/search/', (req, res, next) => {
                             manipulatedTrack.artistName += artist.name;
                             manipulatedTrack.artistName += ", " ? track.artists.length-1 == i : '';
                         }
+                        // put raw track to pass to other routes later
+                        manipulatedTrack.rawTrackJson = track;
                         trackSearchOutput.push(manipulatedTrack);
                     }
                     // 5. How to return results
@@ -207,7 +232,7 @@ router.post('/:roomId/search/', (req, res, next) => {
                         // sort of javascript on the frontend to make this query
                         searchQuery: trackSearch,
                         results: trackSearchOutput,
-                        roomId: room.name
+                        roomId: room.name,
                     });
                 }, function(err) {
                     // TODO: handle this error more elegantly?

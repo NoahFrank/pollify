@@ -9,6 +9,7 @@ block roomContent
         table
             thead
                 tr
+                    th Add To Queue
                     th Song Name
                     th Albumn
                     th Artist
@@ -16,6 +17,8 @@ block roomContent
             tbody
                 each track in results
                     tr
+                        td
+                            a(href="/#{roomId}/add/#{track.id}") +
                         td= track.name
                         td= track.albumName
                         td= track.artistName
