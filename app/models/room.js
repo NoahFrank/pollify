@@ -1,10 +1,7 @@
 const Moniker = require('moniker');
 
-// Setup Redis server
-const redis = require("redis");
-
 // Setup logging
-const log = require('winston');
+const log = require('../../config/logger');
 
 class Room {
 
@@ -12,30 +9,31 @@ class Room {
         // TODO Create custom "dumb" dictionary so we don't have to spell 'efficacious'
         // TODO check for collision, LUL
         this.name = Moniker.generator([Moniker.adjective, Moniker.noun]).choose();
+        this.owner = null;
         this.apiKey = apiKey;
         this.songQueue = [];
     }
 
-    addTrack(track) {
-        this.songQueue.concat(track); // Add to end of queue
+    static addTrack(room, track) {
+        room.songQueue.push(track); // Add to end of queue
         // Shouldn't need to sort after this
         // TODO: Make note of time song was added to determine ties, or does add order suffice?
     }
 
-    removeTrack(track) {
+    static removeTrack(room, track) {
         // TODO: Instead of p-queue, we can use manual array to fit our needs.  Sort after each vote change, and easy insertion and removal
         for (let i = 0; i < this.songQueue.length; i++) {
-            if (this.songQueue[i].id == track.id) {
-                this.songQueue.splice(i, 1);
-                this.songQueue.sort(Room.sortDesc);
+            if (room.songQueue[i].id === track.id) {
+                room.songQueue.splice(i, 1);
+                room.songQueue.sort(Room.sortDesc);
                 return true;
             }
         }
         return false;
     }
 
-    skipTrack() {
-        this.songQueue.pop();
+    static skipTrack(room) {
+        room.songQueue.pop();
         // Shouldn't need to sort after this
     }
 
