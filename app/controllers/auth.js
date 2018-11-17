@@ -118,6 +118,14 @@ router.get(
             }
         });
 
+        // Also create public spotify playlist for this room
+        // spotify.createPlaylist('My Cool Playlist', { 'public' : false })
+        //     .then(function(data) {
+        //         console.log('Created playlist!');
+        //     }, function(err) {
+        //         console.log('Something went wrong!', err);
+        //     });
+
         log.debug("Finished auth spotify calllback");
     }
 );

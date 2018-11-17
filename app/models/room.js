@@ -17,6 +17,10 @@ class Room {
 
     static get(roomId, callback) {
         client.get(roomId, (err, roomString) => {
+            if (err) {  // Always log error so we don't have to everytime
+                log.error(`Failed to get room id=${roomId}!`, err);
+            }
+
             if (roomString === null) {
                 // doesn't exist
                 callback(`${roomId} doesn't exist`, null);

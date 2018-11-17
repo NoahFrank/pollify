@@ -3,8 +3,6 @@ const router = express.Router();
 
 const Room = require('../models/room');
 const Track = require('../models/track');
-// const spotify = require('../models/spotify');
-const SpotifyWebApi = require('spotify-web-api-node');
 
 // Setup Redis connection
 const redis = require("redis");
@@ -79,38 +77,58 @@ router.post('/:roomId/play', (req, res, next) => {
 });
 
 router.post('/:roomId/skip', (req, res, next) => {
-    // TODO: I am starting to think fully using a spotify playlist would be better than mirror state locally
-    // TODO: because you can swap the order of songs with the API, and we will be using a shared resource so we will
-    // TODO: encounter less concurrency issues.  This will increase the overall reliability and consistent behavior
-    // TODO: mitigating race conditions like removing a song and skipping a song at the same time.  This may cost us
-    // TODO: performance but does it really? Does it really?  What are we losing?  We can still grab the current playlist
-    // TODO: and render our own voting view of it.  We can still pause/play, the only thing we have to mirror is the voting.
-    // TODO: Once voting is done, we recalculate the queue, and make sure the spotify queue is the same.  That could be
-    // TODO: an issue though, because if we have many swaps, we need to write a custom (insertion) sorting function that
-    // TODO: logs all the swaps performed so they can be mirrored on the spotify side.
+    // Need some security check that this was actually backed by vote
+    let roomId = req.body.roomId;
+    if (roomId === undefined) {
+        log.error(`Connection to ${roomId} failed`);
+        res.sendStatus(400);
+        return next();
+    }
 
-    Promise.all([client.get(res.params.roomId), spotify.skip()])
-        .then( (results) => {
-            let room = results[0];
-            let skipStatus = results[1];
+    Room.get(roomId, (err, room) => {
+        if (!room) {
+            log.error(`Failed to get room id=${roomId}`);
+            res.status(500).send("Server error: Failed to get room data.");
+            return next();
+        }
 
-            Room.skipTrack(room); // Assumes current spotify song, could be painpoint
-
-            res.redirect(`/${res.params.roomId}`);
-        }).catch( (err) => {
-        log.error(err);
-        res.status(500).send("Server error: Failed to skip playback.");
-        // TODO: Mirror error in state, put song back?
+        let spotify = require('../models/spotify')(room.owner);
+        spotify.playbackNext()
+            .then( () => {
+                log.debug(`Successfully skipped to next track for Room ${room.name}`);
+                res.redirect(`/${res.params.roomId}`);
+            }).catch( (err) => {
+                log.error(err);
+                res.status(500).send("Server error: Failed to playbackNext.");
+            });
     });
 });
 
 router.post('/:roomId/back', (req, res, next) => {
-    // TODO: Mirror state locally in Redis
-    spotify.previous().then( (result) => {
-        res.redirect(`/${res.params.roomId}`);
-    }).catch( (err) => {
-        log.error(err);
-        res.status(500).send("Server error: Failed to back playback.");
+    // Need some security check that this was actually backed by vote
+    let roomId = req.body.roomId;
+    if (roomId === undefined) {
+        log.error(`Connection to ${roomId} failed`);
+        res.sendStatus(400);
+        return next();
+    }
+
+    Room.get(roomId, (err, room) => {
+        if (!room) {
+            log.error("Failed to get room");
+            res.status(500).send("Server error: Failed to get room data.");
+            return next();
+        }
+
+        let spotify = require('../models/spotify')(room.owner);
+        spotify.playbackPrevious()
+            .then(() => {
+                log.debug(`Successfully skipped back to previous track for Room ${room.name}`);
+                res.redirect(`/${res.params.roomId}`);
+            }).catch((err) => {
+                log.error(err);
+                res.status(500).send("Server error: Failed to playbackPrevious.");
+            });
     });
 });
 
@@ -136,9 +154,11 @@ router.get('/:roomId/add/:trackId', (req, res, next) => {
     // 1. Get room
     let room = Room.get(req.params.roomId, (err, roomObj) => {
         if (roomObj) {
-            let newTrack = new Track("Bob");
-            newTrack.getTrackById(roomObj.owner.accessToken, req.params.trackId).then( () => {
+            let newTrack = new Track("Bob");  // TODO: Determine suggestor's name
+            let spotify = require('../models/spotify')(roomObj.owner);
+            newTrack.getTrackById(spotify, req.params.trackId).then( () => {
                 // roomObj.addTrack(newTrack);
+                log.debug(`Added track ${newTrack.name} to queue for room ${roomObj.name} from suggestor ${newTrack.suggestor}`);
                 roomObj.save((err, result) => {
                     if (err) {
                         log.error(err);
@@ -171,28 +191,7 @@ router.post('/:roomId/search/', (req, res, next) => {
             log.info(`Found Room ${roomString}`);
             let room = JSON.parse(roomString);
             // 2. Create spotify instance off room (or rather change the tokens each time to make the corresponding search request from the room it originated)
-            let spotify = new SpotifyWebApi({
-                accessToken: room.owner.accessToken,
-                refreshToken: room.owner.refreshToken
-            });
-
-            if (room.owner.tokenExpirationEpoch > new Date()) {  // Check if token has expired!
-                log.error("Token expired");
-                // spotify.refreshAccessToken().then(
-                //     function(data) {
-                //         let tokenExpirationEpoch =
-                //             new Date().getTime() / 1000 + data.body['expires_in'];
-                //         log.info(
-                //             'Refreshed token. It now expires in ' +
-                //             Math.floor(tokenExpirationEpoch - new Date().getTime() / 1000) +
-                //             ' seconds!'
-                //         );
-                //     },
-                //     function(err) {
-                //         log.error('Could not refresh the token!', err.message);
-                //     }
-                // );
-            }
+            let spotify = require('../models/spotify')(room.owner);
             // 3. Query spotify
             spotify.searchTracks(trackSearch)
                 .then(function(data) {

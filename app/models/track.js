@@ -27,8 +27,7 @@ class Track {
         this.href = "";
     }
 
-    getTrackById(roomApiKey, trackId) {
-        spotify.setAccessToken(roomApiKey);
+    getTrackById(spotify, trackId) {
         return new Promise( (resolve, reject) => {
             spotify.getTrack(trackId).then( track => {
                 if (track.statusCode === 200) {
