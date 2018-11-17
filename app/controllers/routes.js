@@ -3,8 +3,8 @@ const router = express.Router();
 
 const Room = require('../models/room');
 const Track = require('../models/track');
-const spotify = require('../models/spotify');
-const passport = require('passport');
+// const spotify = require('../models/spotify');
+const SpotifyWebApi = require('spotify-web-api-node');
 
 // Setup Redis connection
 const redis = require("redis");
@@ -18,89 +18,9 @@ client.on("error", (err) => {
     log.error("Redis Error " + err);
 });
 
-
-const appId = require('config').get('appID');
-const appSecret = require('config').get('appSecret');
-
-const SpotifyStrategy = require('passport-spotify').Strategy;
-
-passport.use(
-    new SpotifyStrategy(
-        {
-            clientID: appId,
-            clientSecret: appSecret,
-            callbackURL: 'http://localhost:3000/auth/spotify/callback'
-        },
-        function (accessToken, refreshToken, expires_in, profile, done) {
-            log.debug(`accessToken=${accessToken}`);
-            log.debug(`refreshToken=${refreshToken}`);
-            log.debug(`expires_in=${expires_in.expires_in}`);
-            log.debug(`profile=${JSON.stringify(profile)}`);
-            return done(null, profile);  // TODO: Change profile to user id/key in db
-            // Store authenticated user's accesstoken and refreshtoken for this session and all future sessions
-
-            // client.set(room.name, JSON.stringify(room), (err, result) => {
-            //     if (err) {
-            //         log.error(err);
-            //     }
-            //
-            //     if (result) {
-            //         log.info(`Connection to ${room.name} successful`);
-            //         res.redirect(`/${room.name}`);
-            //     } else {
-            //         log.error(`Attempted to join ${room.name} but room doesn't exist`);
-            //         res.sendStatus(404);
-            //     }
-            // });
-        }
-    )
-);
-
-passport.serializeUser(function(user, done) {
-    done(null, user);
-});
-
-passport.deserializeUser(function(obj, done) {
-    done(null, obj);
-});
-
-
 module.exports = (app) => {
     app.use('/', router);
 };
-
-router.get(
-    '/auth/spotify',
-    passport.authenticate('spotify', {  // TODO: We gotta support Spotify Connect AND Spotify app integration
-        scope: [
-            'playlist-read-private',
-            'playlist-modify-public',
-            'playlist-read-collaborative',
-            'user-read-email',
-            'user-read-playback-state',
-            'user-read-currently-playing',
-            'user-modify-playback-state',
-            'app-remote-control',
-            'streaming',
-            'user-library-read'
-        ]
-    }),
-    function (req, res) {
-        // The request will be redirected to spotify for authentication, so this
-        // function will not be called.
-    }
-);
-
-
-router.get(
-    '/auth/spotify/callback',
-    passport.authenticate('spotify', { failureRedirect: '/failed-spotify-auth' }),
-    function(req, res) {
-        // Successful authentication, redirect home.
-        log.debug("Finished auth spotify calllback");
-        res.redirect('/');
-    }
-);
 
 
 router.get('/', (req, res, next) => {
@@ -124,8 +44,7 @@ router.get('/:roomId', (req, res, next) => {
             log.info(`Rendering ${roomId} with ${room}`);
             room = JSON.parse(room);
             res.render('room', {
-                roomId: room.name,
-                queue: room.songQueue
+                roomId: room.name
             });
         }
     });
@@ -179,10 +98,10 @@ router.post('/:roomId/skip', (req, res, next) => {
 
             res.redirect(`/${res.params.roomId}`);
         }).catch( (err) => {
-            log.error(err);
-            res.status(500).send("Server error: Failed to skip playback.");
-            // TODO: Mirror error in state, put song back?
-        });
+        log.error(err);
+        res.status(500).send("Server error: Failed to skip playback.");
+        // TODO: Mirror error in state, put song back?
+    });
 });
 
 router.post('/:roomId/back', (req, res, next) => {
@@ -213,27 +132,13 @@ router.post('/join', (req, res, next) => {
     }
 });
 
-router.post('/create', (req, res, next) => {
-    let apiKey = req.body.apiKey;
-    let room = new Room(apiKey);
-    room.save((err, result) => {
-        if (result) {
-            log.info(`Connection to ${room.name} successful`);
-            res.redirect(`/${room.name}`);
-        } else {
-            log.error(`Attempted to join ${room.name} but room doesn't exist`);
-            res.sendStatus(404);
-        }
-    });
-});
-
 router.get('/:roomId/add/:trackId', (req, res, next) => {
     // 1. Get room
-    room = Room.get(req.params.roomId, (err, roomObj) => {
+    let room = Room.get(req.params.roomId, (err, roomObj) => {
         if (roomObj) {
             let newTrack = new Track("Bob");
-            newTrack.getTrackById(roomObj.apiKey, req.params.trackId).then( () => {
-                roomObj.addTrack(newTrack);
+            newTrack.getTrackById(roomObj.owner.accessToken, req.params.trackId).then( () => {
+                // roomObj.addTrack(newTrack);
                 roomObj.save((err, result) => {
                     if (err) {
                         log.error(err);
@@ -247,7 +152,7 @@ router.get('/:roomId/add/:trackId', (req, res, next) => {
                 log.error(err);
             });
         } else {
-            log.error(`Attempted to find room ${roomId} but doesn't exist`);
+            log.error(`Attempted to find room ${roomObj.name} but doesn't exist`);
             res.sendStatus(404);
         }
     });
@@ -265,8 +170,29 @@ router.post('/:roomId/search/', (req, res, next) => {
         } else {
             log.info(`Found Room ${roomString}`);
             let room = JSON.parse(roomString);
-            // 2. Create spotify instance off room
-            spotify.setAccessToken(room.apiKey);
+            // 2. Create spotify instance off room (or rather change the tokens each time to make the corresponding search request from the room it originated)
+            let spotify = new SpotifyWebApi({
+                accessToken: room.owner.accessToken,
+                refreshToken: room.owner.refreshToken
+            });
+
+            if (room.owner.tokenExpirationEpoch > new Date()) {  // Check if token has expired!
+                log.error("Token expired");
+                // spotify.refreshAccessToken().then(
+                //     function(data) {
+                //         let tokenExpirationEpoch =
+                //             new Date().getTime() / 1000 + data.body['expires_in'];
+                //         log.info(
+                //             'Refreshed token. It now expires in ' +
+                //             Math.floor(tokenExpirationEpoch - new Date().getTime() / 1000) +
+                //             ' seconds!'
+                //         );
+                //     },
+                //     function(err) {
+                //         log.error('Could not refresh the token!', err.message);
+                //     }
+                // );
+            }
             // 3. Query spotify
             spotify.searchTracks(trackSearch)
                 .then(function(data) {
@@ -278,18 +204,19 @@ router.post('/:roomId/search/', (req, res, next) => {
                         manipulatedTrack.id = track.id;
                         manipulatedTrack.name = track.name;
                         manipulatedTrack.albumName = track.album.name;
-                        let seconds = track.duration_ms /1000;
+                        let seconds = track.duration_ms / 1000;
                         let minutes = parseInt(seconds / 60);
                         let secondsLeftOver = (seconds%60).toFixed(0);
                         manipulatedTrack.duration = `${minutes}:${secondsLeftOver}`;  // TODO: Convert this to human readable
                         manipulatedTrack.artistName = "";
                         for (let i = 0; i < track.artists.length; i++) {
-                            artist = track.artists[i];
+                            let artist = track.artists[i];
                             manipulatedTrack.artistName += artist.name;
-                            manipulatedTrack.artistName += ", " ? track.artists.length-1 == i : '';
+                            manipulatedTrack.artistName += track.artists.length-1 != i ? ", " : '';
                         }
                         // put raw track to pass to other routes later
                         manipulatedTrack.rawTrackJson = track;
+                        manipulatedTrack.albumImage = track.album.images[2].url;
                         trackSearchOutput.push(manipulatedTrack);
                     }
                     // 5. How to return results
@@ -301,18 +228,14 @@ router.post('/:roomId/search/', (req, res, next) => {
                         results: trackSearchOutput,
                         roomId: room.name,
                     });
-                }, function(err) {
-                    // TODO: handle this error more elegantly?
-                    log.error(err);
-                    res.status(500).send("Server error: Failed to find track.");
-                })
-                .catch(function(err) {
-                    log.error(err);
-                    res.status(500).send("Server error: Failed to find track.");
-                });
+                }).catch(function(err) {
+                // TODO: handle this error more elegantly?
+                log.error(err);
+                res.status(500).send("Server error: Failed to find track.");
+            });
         }
     });
-})
+});
 
 router.post('/:roomId/remove/:trackId', (req, res, next) => {
     res.render('index', { title: 'Express' });

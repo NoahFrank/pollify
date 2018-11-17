@@ -10,8 +10,9 @@ block roomContent
             thead
                 tr
                     th Add To Queue
+                    th Album Cover
                     th Song Name
-                    th Albumn
+                    th Album
                     th Artist
                     th Length
             tbody
@@ -19,6 +20,8 @@ block roomContent
                     tr
                         td
                             a(href="/#{roomId}/add/#{track.id}") +
+                        td
+                            img(src='#{track.albumImage}', height=64, width=64)
                         td= track.name
                         td= track.albumName
                         td= track.artistName

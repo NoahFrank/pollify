@@ -35,7 +35,7 @@ class Track {
                     this.id = track.body.id;
                     this.name = track.body.name;
                     this.album = track.body.album;
-                    this.albumImage = track.body.album.images[0].url; // Biggest Image of Album Art
+                    this.albumImage = track.body.album.images[0].url; // Biggest Image of Album Art 640x640
                     this.artists = track.body.artists;
                     this.artistName = track.body.artists[0].name;
                     this.popularity = track.body.popularity;

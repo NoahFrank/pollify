@@ -10,9 +10,6 @@ block content
             input(type="submit", value="Join")
 
     p
-        form(name="create", method="post", action="/create")
-            | Create Room:
-            | <br>
-            | Please enter your Spotify API Key:
-            input(type="text", name="apiKey")
-            input(type="submit", value="Create")
+        form(name="auth", method="get", action="/auth/spotify")
+            | Create Room
+            input(type="submit", value="Login and Create Room")
