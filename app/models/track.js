@@ -17,7 +17,7 @@ class Track {
         this.duration_ms = -1;
         this.type = "";
 
-        this.uri = -1;
+        this.uri = "";
         this.track_number = -1;
         this.available_markets = [];
         this.disc_number = -1;
@@ -40,6 +40,7 @@ class Track {
                     this.popularity = track.body.popularity;
                     this.duration_ms = track.body.duration_ms;
 
+                    this.uri = track.body.uri;
                     this.track_number = track.body.track_number;
                     this.available_markets = track.body.available_markets;
                     this.explicit = track.body.explicit;

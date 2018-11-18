@@ -10,9 +10,14 @@ const log = require('../../config/logger');
 class Room {
 
     constructor (owner, name=Moniker.generator([Moniker.adjective, Moniker.noun]).choose()) {
-        // TODO check for collision, LUL
+        // TODO check for collision of Moniker name generation, two rooms with same name would likely throw many errors
         this.name = name;
         this.owner = owner;
+        this.roomPlaylistId = null;
+    }
+
+    isPlaylistCreated() {
+        return this.roomPlaylistId !== null;
     }
 
     static get(roomId, callback) {
