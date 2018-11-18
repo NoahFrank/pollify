@@ -118,14 +118,17 @@ router.get(
             }
         });
 
-        // Also create public spotify playlist for this room
-        // spotify.createPlaylist('My Cool Playlist', { 'public' : false })
-        //     .then(function(data) {
-        //         console.log('Created playlist!');
-        //     }, function(err) {
-        //         console.log('Something went wrong!', err);
-        //     });
+        // Also create spotify playlist for this room
+        let spotify = require('../models/spotify')(newOwner);
+        // I think we can make playlist private because all other user's in room aren't required to login to spotify.
+        // They simply use the owner's accessToken, and add/remove tracks with owner's token as well
+        spotify.createPlaylist(newOwner.profileId, newRoom.name, { 'public' : false })
+            .then((data) => {
+                log.debug(`Created ${newRoom.name} playlist!  playlist id=${JSON.stringify(data)}`);
+            }).catch( (err) => {
+                log.debug(`Failed to create public playlist named ${newRoom.name}!`, err);
+            });
 
-        log.debug("Finished auth spotify calllback");
+        log.debug("Finished auth spotify callback");
     }
 );
