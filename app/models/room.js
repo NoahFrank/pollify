@@ -42,21 +42,23 @@ class Room {
         })
         .catch( (err) => {
             // Always log error so no need in each catch statement where this is used
-            log.error(`Failed to get roomId=${roomId} from db with error=${err}`);
+            log.error(`Failed to get roomId=${roomId} from db with error=${err} and message=${err.message}`);
             // Make sure to not negate any custom .catch statements by passing this error down the line
             throw err;
         });
     }
 
-    save(callback) {
-        // TODO: Convert to node-cache and Promise
-        client.set(this.name, JSON.stringify(this), (err, result) => {
-            if (result) {
-                callback(null, result);
-            } else {
-                log.error(`Expected saved Room object, but got ${result} with error=${err}`);
-                callback(err, null);
-            }
+    save(cache) {
+        return new Promise( (resolve, reject) => {
+            cache.set(this.name, this, (err, success) => {
+                if (success) {
+                    resolve(success);
+                } else {
+                    // Always log error before rejecting
+                    log.error(`Expected saved Room object, but success=${success} with error=${err} and message=${err.message}`);
+                    reject(err);
+                }
+            })
         });
     }
 

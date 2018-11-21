@@ -49,8 +49,8 @@ class Track {
                     reject(`Status Code was not 200, but instead ${track.statusCode}`);
                 }
             }).catch( err => {
-                log.error(`Failed to capture Track by ID: ${err}`);
-                reject(`Failed to capture Track by ID: ${err}`);
+                log.error(`Failed to capture Track by ID: ${err} and message=${err.message}`);
+                reject(`Failed to capture Track by ID: ${err.message}`);
             });
         });
     }

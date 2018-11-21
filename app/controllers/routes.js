@@ -146,7 +146,7 @@ router.post('/join', (req, res, next) => {
 
     req.app.get('cache').getTtl(roomId, (ttl) => {
         if (ttl === undefined) {  // Undefined means key does not exist
-            log.error(`Attempted to join ${roomId} but room doesn't exist with error=${err}`);
+            log.error(`Attempted to join ${roomId} but room doesn't exist with error=${err} and message=${err.message}`);
             res.sendStatus(404);
         } else {  // 0 or timestamp of how long key-value will be in cache
             log.info(`Connection to ${roomId} successful`);
@@ -200,7 +200,7 @@ router.get('/:roomId/add/:trackId', (req, res, next) => {
         })
         .catch( (err) => {
             // Could be Room.get or getTrackById error
-            log.error(`Failed to add track to queue! error=${err}`);
+            log.error(`Failed to add track to queue! error=${err} and message=${err.message}`);
             res.status(500).send(`Failed to add Track to queue for your Room`);
         }
     );
@@ -253,7 +253,7 @@ router.post('/:roomId/search/', (req, res, next) => {
         })
         .catch( (err) => {
             // Could be Room.get or spotify.search error
-            log.error(`Failed to search for ${trackSearch}! error=${err}`);
+            log.error(`Failed to search for ${trackSearch}! error=${err} and message=${err.message}`);
             res.status(500).send(`Failed to add Track to queue for your Room`);
         }
     );
