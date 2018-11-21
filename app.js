@@ -17,3 +17,8 @@ module.exports = require('./config/express')(app, config);
 app.listen(config.port, () => {
     log.info('Express server listening on port ' + config.port);
 });
+
+process.on('unhandledRejection', (reason, p) => {
+    log.error('Unhandled Rejection at: Promise', p, 'reason:', reason);
+    // application specific logging, throwing an error, or other logic here
+});

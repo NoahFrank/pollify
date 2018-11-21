@@ -90,36 +90,41 @@ router.get('/spotify/callback', passport.authenticate('spotify', { failureRedire
         // They simply use the owner's accessToken, and add/remove tracks with owner's token as well
         newRoom.spotify.createPlaylist(newOwner.profileId, newRoom.name, { 'public' : false })
             .then( (data) => {
-                log.debug(`Created ${newRoom.name} playlist!  playlist id=${JSON.stringify(data)}`);
+                log.debug(`Created ${newRoom.name} playlist!  playlist id=${data.body.id}`);
                 // Make sure to store reference to Room Playlist!  Very important...
-                newRoom.roomPlaylistId = data.id;
+                newRoom.roomPlaylistId = data.body.id;
 
                 // Save newRoom into database
-                req.app.get('cache').set(newRoom.name, newRoom, (err, success) => {
-                    if (err) {
-                        log.error(err);
-                    }
-
-                    if (success) {
-                        log.info(`Connection to ${newRoom.name} successful`);
+                newRoom.save(req.app.get('cache'))
+                    .then( (success) => {
+                        log.info(`Created and saved ${newRoom.name}!!! Redirecting to new room...`);
                         res.redirect(`/${newRoom.name}`);
-                    } else {
-                        log.error(`Attempted to join ${newRoom.name} but room doesn't exist`);
+                    })
+                    .catch( (err) => {
                         res.sendStatus(404);
                     }
-                });
+                );
 
                 // Set shuffle to false, TODO: Capture shuffle state before we change it, then restore after done with pollify
-                newRoom.spotify.setShuffle({state: 'false'});
+                // TODO: Consider Promise.all to avoid nested promises
+                newRoom.spotify.setShuffle({state: 'false'})
+                    .then( () => {
+                        log.debug(`Turned Shuffle OFF`);
+                    })
+                    .catch( (err) => {
+                        log.error(`Failed to disable Spotify Shuffle, error=${err} and message=${err.message}`);
+                    }
+                );
 
                 /**
                  * Unfortunately, we are going to have to manually manipulate a Spotify Playlist, inserting, reodering, and removing
                  * to maintain a queue-like structure because Spotify has no API queuing or queue viewing.
                  */
 
-            }).catch( (err) => {
+            })
+            .catch( (err) => {
                 // TODO: ROOM WILL NOT SAVE IF THE PLAYLIST ISN'T CREATED
-                log.error(`Failed to create public playlist named ${newRoom.name}!`, err);
+                log.error(`Failed to create public playlist named ${newRoom.name}! error=${err} and message=${err.message}`);
                 res.redirect(`/`);  // TODO: Make sure user knowns why it failed or what they can do to fix it (Premium Spotify only, try again, etc)
             }
         );

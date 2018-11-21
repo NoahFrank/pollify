@@ -103,7 +103,7 @@ router.get('/:roomId/skip', (req, res, next) => {  // TODO: Should Skip/Back/Pla
         })
         .catch( (err) => {
             // Could be getRoomAndSpotify or skipToNext error
-            log.error("Failed to skip track in queue!", err);
+            log.error(`Failed to skip track in queue! error=${err} and message=${err.message}`);
             res.status(500).send(`Failed to skip Track in queue for your Room`);
         }
     );
@@ -129,7 +129,7 @@ router.post('/:roomId/back', (req, res, next) => {
         })
         .catch( (err) => {
             // Could be getRoomAndSpotify or skipToPrevious error
-            log.error("Failed to skip to previous track in queue!", err);
+            log.error(`Failed to skip to previous track in queue! error=${err} and ${err.message}`);
             res.status(500).send(`Failed to skip to previous Track in queue for your Room`);
         }
     );
@@ -183,7 +183,7 @@ router.get('/:roomId/add/:trackId', (req, res, next) => {
             }
 
             // TODO: Consider returning the addTracksToPlaylist promise and making another .then() chain to keep uniformity
-            room.spotify.addTracksToPlaylist(room.owner.profileId, room.roomPlaylistId, [newTrack.uri])
+            room.spotify.addTracksToPlaylist(room.roomPlaylistId, [newTrack.uri])  // Has 3rd options parameter that allows "position"!
                 .then( () => {
                     // 4. Successful finish! We added the track to the playlist!
                     // TODO: Handle positioning of the track in queue
@@ -191,7 +191,7 @@ router.get('/:roomId/add/:trackId', (req, res, next) => {
                 })
                 .catch( (err) => {
                     // TODO: Notify user we failed to add track to spotify playlist "queue"
-                    log.error(`Failed to add track ${newTrack.uri} to playlist for room ${room.name}, likely a spotify API error!`, err);
+                    log.error(`Failed to add track ${newTrack.uri} to playlist for room ${room.name}, likely a spotify API error! error=${err} and message=${err.message}`);
                 }
             );
 

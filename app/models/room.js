@@ -27,7 +27,7 @@ class Room {
         return new Promise( (resolve, reject) => {
             cache.get(roomId, (err, room) => {
                 if (err) {  // Always log error so we don't have to everytime
-                    log.error(`Failed to get room id=${roomId}!`, err);
+                    log.error(`Failed to get room id=${roomId}! error=${err} and message=${err.message}`);
                     reject(err);
                 }
 
