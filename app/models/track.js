@@ -44,7 +44,7 @@ class Track {
                     this.track_number = track.body.track_number;
                     this.available_markets = track.body.available_markets;
                     this.explicit = track.body.explicit;
-                    resolve();
+                    resolve(this);
                 } else {
                     reject(`Status Code was not 200, but instead ${track.statusCode}`);
                 }
