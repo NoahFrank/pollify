@@ -20,6 +20,50 @@ module.exports = (app) => {
     app.use('/', router);
 };
 
+// CONSTANTS
+const ADDED_TRACK_KEY = "RecentlyAddedTrackThatNeedsToBeStoredBecauseSpotifyDoesn'tUpdateThatQuick";
+// END CONSTANTS
+
+function saltAddedTrackKey(roomId) {
+    return ADDED_TRACK_KEY + roomId;
+}
+
+function noRoomPlaylistError(roomId, res, next) {
+    log.error(`This room (${roomId}) has no linked playlist!  That's a huge problem...`);
+    res.status(500).send(`Failed to add track because this Room doesn't have a Spotify playlist!`);
+    return next();
+}
+
+
+function buildTrackView(track, includeAlbumImage=false, includeFullTrack=false) {
+    let manipulatedTrack = {};
+
+    // Set optional fields if supplied
+    if (includeFullTrack) {
+        // put raw track to pass to other routes later
+        manipulatedTrack.rawTrackJson = track;
+    }
+    if (includeAlbumImage) {
+        manipulatedTrack.albumImage = track.album.images[2].url;
+    }
+
+    manipulatedTrack.id = track.id;
+    manipulatedTrack.name = track.name;
+    manipulatedTrack.albumName = track.album.name;
+    let seconds = track.duration_ms / 1000;
+    let minutes = parseInt(seconds / 60);
+    let secondsLeftOver = (seconds%60).toFixed(0);
+    manipulatedTrack.duration = `${minutes}:${secondsLeftOver}`;  // TODO: Convert this to human readable
+    manipulatedTrack.artistName = "";
+    for (let i = 0; i < track.artists.length; i++) {
+        let artist = track.artists[i];
+        manipulatedTrack.artistName += artist.name;
+        manipulatedTrack.artistName += track.artists.length-1 != i ? ", " : '';
+    }
+
+    return manipulatedTrack;
+}
+
 
 router.get('/', (req, res, next) => {
     // TODO: Be careful on how we store the JS class in Redis
@@ -32,15 +76,62 @@ router.get('/', (req, res, next) => {
 
 router.get('/:roomId', (req, res, next) => {
     let roomId = req.params.roomId;
-    Room.get(roomId, req.app.get('cache'))
+    let cache = req.app.get('cache');
+    const includeAlbumImage = true;
+
+    Room.get(roomId, cache)
         .then( (room) => {
             // TODO: Get current playlist "queue" state and pass to view
+            if (!room.isPlaylistCreated()) {
+                return noRoomPlaylistError(roomId, res, next);
+            }
 
-            // render template passing Room object
-            log.info(`Rendering ${roomId}`);
-            res.render('room', {
-                roomId: room.name
-            });
+            room.spotify.getPlaylistTracks(room.playlistId)
+                .then( (playlistTracks) => {
+                    let trackSearchOutput = [];
+                    let tracks = playlistTracks.body.items;
+
+                    let addedTrack = null;
+                    let isAddedTrackAlreadyInPlaylist = false;
+                    const saltedAddedTrackKey = saltAddedTrackKey(roomId);
+                    if (cache.ttl(saltedAddedTrackKey) !== undefined) {  // Ensure we check SALTED key to avoid collisions
+                        addedTrack = cache.get(saltedAddedTrackKey);
+                        log.debug(`Got passed track context from redirect!`);
+                    }
+
+                    for (let track of tracks) {
+                        track = track.track;  // Playlist Tracks have more info, so Track info is nested
+
+                        // If there is a new addedTrack, then we need to check if its already in the playlist
+                        if (addedTrack && track.id == addedTrack.id) {
+                            isAddedTrackAlreadyInPlaylist = true;
+                        }
+
+                        let manipulatedTrack = buildTrackView(track, includeAlbumImage);
+                        trackSearchOutput.push(manipulatedTrack);
+                    }
+
+                    // Add track if we don't already have it!
+                    if (!isAddedTrackAlreadyInPlaylist && addedTrack) {
+                        let manipulatedTrack = buildTrackView(addedTrack, includeAlbumImage);
+                        trackSearchOutput.push(manipulatedTrack);  // TODO: Make sure addedTrack gets placed in correct position in queue
+
+                        // Make sure to reset cache key for next time
+                        cache.del(saltedAddedTrackKey);
+                    }
+
+                    log.info(`Rendering ${roomId}`);
+                    res.render('room', {
+                        roomId: room.name,
+                        queue: trackSearchOutput,
+                    });
+                })
+                .catch( (err) => {
+                    log.error(`Failed to get Room ${roomId}'s Spotify playlist with error=${err} and message=${err.message}`);
+                    res.status(500).send("Failed to get Spotify Playlist for this Room");
+                    return next();
+                }
+            );
         })
         .catch( (err) => {
             log.error(`${roomId} doesn't exist`);
@@ -83,7 +174,7 @@ router.post('/:roomId/play', (req, res, next) => {
     );
 });
 
-router.get('/:roomId/skip', (req, res, next) => {  // TODO: Should Skip/Back/Play be GET or POST? Owner override or vote-based events?
+router.post('/:roomId/skip', (req, res, next) => {  // TODO: Should Skip/Back/Play be GET or POST? Owner override or vote-based events?
     // Need some security check that this was actually backed by vote
     let roomId = req.params.roomId;
     if (roomId === undefined) {
@@ -155,7 +246,7 @@ router.post('/join', (req, res, next) => {
     });
 });
 
-router.get('/:roomId/add/:trackId', (req, res, next) => {
+router.get('/:roomId/add/:trackId', (req, res, next) => {  // TODO: Change back to POST
     let roomId = req.params.roomId;
     let trackId = req.params.trackId;
     if (roomId === undefined || trackId === undefined) {
@@ -164,8 +255,9 @@ router.get('/:roomId/add/:trackId', (req, res, next) => {
         return next();
     }
 
+    let cache = req.app.get('cache');
     // 1. Get room and spotify instance for this room
-    Room.get(roomId, req.app.get('cache'))
+    Room.get(roomId, cache)
         .then( (room) => {
             // 2. Construct new Track object with suggestor and populate Track data with getTrackById
             let newTrack = new Track("Bob");  // TODO: Determine suggestor's name
@@ -177,13 +269,11 @@ router.get('/:roomId/add/:trackId', (req, res, next) => {
             let [room, newTrack] = context;  // Array deconstruction, why can't we have nice things
             // 3. Done populating Track!  Now make sure to actually add track to room playlist and redirect back to room after successful queue add
             if (!room.isPlaylistCreated()) {  // Sanity check to ensure the Room actually created a Playlist
-                log.error("Failed to add track to playlist, this room has no linked playlist!");
-                res.status(500).send(`Failed to add track because this Room doesn't have a Spotify playlist!`);
-                return next();
+                return noRoomPlaylistError(roomId, res, next);
             }
 
             // TODO: Consider returning the addTracksToPlaylist promise and making another .then() chain to keep uniformity
-            room.spotify.addTracksToPlaylist(room.roomPlaylistId, [newTrack.uri])  // Has 3rd options parameter that allows "position"!
+            room.spotify.addTracksToPlaylist(room.playlistId, [newTrack.uri])  // Has 3rd options parameter that allows "position"!
                 .then( () => {
                     // 4. Successful finish! We added the track to the playlist!
                     // TODO: Handle positioning of the track in queue
@@ -195,7 +285,8 @@ router.get('/:roomId/add/:trackId', (req, res, next) => {
                 }
             );
 
-            // 5. Return user to room home
+            // 5. Return user to room home with addedTrack in cache
+            cache.set(saltAddedTrackKey(roomId), newTrack);
             res.redirect(`/${room.name}`);
         })
         .catch( (err) => {
@@ -222,23 +313,7 @@ router.post('/:roomId/search/', (req, res, next) => {
             // 3. Manipulate response to an output we are going to display
             let trackSearchOutput = [];
             for (let track of tracks) {
-                let manipulatedTrack = {};
-                manipulatedTrack.id = track.id;
-                manipulatedTrack.name = track.name;
-                manipulatedTrack.albumName = track.album.name;
-                let seconds = track.duration_ms / 1000;
-                let minutes = parseInt(seconds / 60);
-                let secondsLeftOver = (seconds%60).toFixed(0);
-                manipulatedTrack.duration = `${minutes}:${secondsLeftOver}`;  // TODO: Convert this to human readable
-                manipulatedTrack.artistName = "";
-                for (let i = 0; i < track.artists.length; i++) {
-                    let artist = track.artists[i];
-                    manipulatedTrack.artistName += artist.name;
-                    manipulatedTrack.artistName += track.artists.length-1 != i ? ", " : '';
-                }
-                // put raw track to pass to other routes later
-                manipulatedTrack.rawTrackJson = track;
-                manipulatedTrack.albumImage = track.album.images[2].url;
+                let manipulatedTrack = buildTrackView(track, true, true);
                 trackSearchOutput.push(manipulatedTrack);
             }
             // 4. Render search results

@@ -92,7 +92,7 @@ router.get('/spotify/callback', passport.authenticate('spotify', { failureRedire
             .then( (data) => {
                 log.debug(`Created ${newRoom.name} playlist!  playlist id=${data.body.id}`);
                 // Make sure to store reference to Room Playlist!  Very important...
-                newRoom.roomPlaylistId = data.body.id;
+                newRoom.playlistId = data.body.id;
 
                 // Save newRoom into database
                 newRoom.save(req.app.get('cache'))

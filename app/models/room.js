@@ -13,14 +13,14 @@ class Room {
         // TODO check for collision of Moniker name generation, two rooms with same name would likely throw many errors
         this.name = name;
         this.owner = owner;
-        this.roomPlaylistId = null;
+        this.playlistId = null;
 
         // Also create a dedicated instance of SpotifyWebApi to make ALL requests for this Room using the given Owner authorized credentials
         this.spotify = require('../models/spotify')(owner);
     }
 
     isPlaylistCreated() {
-        return this.roomPlaylistId !== null;
+        return this.playlistId !== null;
     }
 
     static get(roomId, cache) {

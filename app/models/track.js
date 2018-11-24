@@ -1,5 +1,3 @@
-const spotify = require('./spotify');
-
 // Setup logging
 const log = require('../../config/logger');
 

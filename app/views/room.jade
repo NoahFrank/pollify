@@ -1,5 +1,27 @@
 extends roomBase
 
 block roomContent
-    h2 Jimmy's Room
-    p Room MOTD
+    h2 Owner's Room
+    div
+        h2 Queue:
+        if queue.length > 0
+            table
+                thead
+                    tr
+                        th Album Cover
+                        th Song Name
+                        th Album
+                        th Artist
+                        th Length
+                tbody
+                    each track in queue
+                        tr
+                            td
+                                img(src='#{track.albumImage}', height=64, width=64)
+                            td= track.name
+                            td= track.albumName
+                            td= track.artistName
+                            td= track.duration
+        else
+            p Nothing in queue!
+    p Room MOTD - Room description, etc
