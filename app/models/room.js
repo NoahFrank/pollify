@@ -1,9 +1,5 @@
 const Moniker = require('moniker');
 
-// Setup Redis server
-const redis = require("redis");
-const client = redis.createClient();
-
 // Setup logging
 const log = require('../../config/logger');
 

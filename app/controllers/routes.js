@@ -4,17 +4,8 @@ const router = express.Router();
 const Room = require('../models/room');
 const Track = require('../models/track');
 
-// Setup Redis connection
-const redis = require("redis");
-const client = redis.createClient();
-
 // Setup logging
 const log = require('../../config/logger');
-
-// Print Redis errors
-client.on("error", (err) => {
-    log.error("Redis Error " + err);
-});
 
 module.exports = (app) => {
     app.use('/', router);

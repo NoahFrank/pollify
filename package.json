@@ -27,8 +27,6 @@
     "npm": "^6.4.1",
     "passport": "^0.4.0",
     "passport-spotify": "^0.3.1",
-    "redis": "^2.8.0",
-    "redis-server": "^1.2.2",
     "request": "^2.88.0",
     "serve-favicon": "^2.5.0",
     "spotify-web-api-node": "^4.0.0"

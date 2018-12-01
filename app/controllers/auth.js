@@ -12,10 +12,6 @@ const SpotifyStrategy = require('passport-spotify').Strategy;
 // Setup logging
 const log = require('../../config/logger');
 
-// Setup Redis connection
-const redis = require("redis");
-const client = redis.createClient();
-
 module.exports = (app) => {
     app.use('/auth', router);
 };
