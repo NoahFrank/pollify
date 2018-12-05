@@ -8,20 +8,36 @@ block roomContent
             table
                 thead
                     tr
+                        th Up Doot
+                        th Down Doot
                         th Album Cover
                         th Song Name
                         th Album
                         th Artist
                         th Length
+                        th Votes
                 tbody
                     each track in queue
                         tr
+                            td
+                                form(id="#{track.id}-vote", method="POST", action="/#{room.name}/vote")
+                                    //- TODO: csrf
+                                    input(type="hidden", name="songId", value="#{track.id}")
+                                    button(type="submit")
+                                        ="+"
+                            td
+                                form(id="#{track.id}-unvote", method="POST", action="/#{room.name}/unvote")
+                                    //- TODO: csrf
+                                    input(type="hidden", name="songId", value="#{track.id}")
+                                    button(type="submit")
+                                        ="-"
                             td
                                 img(src='#{track.albumImage}', height=64, width=64)
                             td= track.name
                             td= track.albumName
                             td= track.artistName
                             td= track.duration
+                            td= room.songVotes[track.id]
         else
             p Nothing in queue!
     p Room MOTD - Room description, etc

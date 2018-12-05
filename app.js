@@ -19,6 +19,6 @@ app.listen(config.port, () => {
 });
 
 process.on('unhandledRejection', (reason, p) => {
-    log.error('Unhandled Rejection at: Promise', p, 'reason:', reason);
+    log.error(`Unhandled Rejection at: Promise: ${p} reason: ${reason}`);
     // application specific logging, throwing an error, or other logic here
 });

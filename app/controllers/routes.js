@@ -99,6 +99,7 @@ router.get('/:roomId', (req, res, next) => {
                         }
 
                         let manipulatedTrack = buildTrackView(track, includeAlbumImage);
+                        room.initializeSongVotes(manipulatedTrack.id);
                         trackSearchOutput.push(manipulatedTrack);
                     }
 
@@ -106,14 +107,18 @@ router.get('/:roomId', (req, res, next) => {
                     if (!isAddedTrackAlreadyInPlaylist && addedTrack) {
                         let manipulatedTrack = buildTrackView(addedTrack, includeAlbumImage);
                         trackSearchOutput.push(manipulatedTrack);  // TODO: Make sure addedTrack gets placed in correct position in queue
+                        room.initializeSongVotes(manipulatedTrack.id);
 
                         // Make sure to reset cache key for next time
                         cache.del(saltedAddedTrackKey);
                     }
 
+                    // TODO: Determine when to save conditionally
+                    room.save(cache);
+
                     log.info(`Rendering ${roomId}`);
                     res.render('room', {
-                        roomId: room.name,
+                        room: room,
                         queue: trackSearchOutput,
                     });
                 })
@@ -132,13 +137,39 @@ router.get('/:roomId', (req, res, next) => {
 });
 
 router.post('/:roomId/vote', (req, res, next) => {
-    res.body.trackId.votes++; // TODO: Assumes trackId being sent in body
-    res.redirect(`/${res.params.roomId}`);
+    let roomId = req.params.roomId;
+    let songId = req.body.songId;
+    let cache = req.app.get('cache');
+    log.info(`Voting in ${roomId} for ${songId}`);
+
+    Room.get(roomId, cache)
+        .then( (room) => {
+            room.addSongVotes(songId);
+            room.save(cache);
+            res.redirect(`/${room.name}`);
+        })
+        .catch( (err) => {
+            log.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
+        });
 });
 
 router.post('/:roomId/unvote', (req, res, next) => {
-    res.body.trackId.votes--; // TODO: Assumes trackId being sent in body
-    res.redirect(`/${res.params.roomId}`);
+    let roomId = req.params.roomId;
+    let songId = req.body.songId;
+    let cache = req.app.get('cache');
+    log.info(`Unvoting in ${roomId} for ${songId}`);
+
+    Room.get(roomId, cache)
+        .then( (room) => {
+            room.removeSongVotes(songId);
+            room.save(cache);
+            res.redirect(`/${room.name}`);
+        })
+        .catch( (err) => {
+            log.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
+        });
 });
 
 router.post('/:roomId/pause', (req, res, next) => {
@@ -314,7 +345,7 @@ router.post('/:roomId/search/', (req, res, next) => {
                 // sort of javascript on the frontend to make this query
                 searchQuery: trackSearch,
                 results: trackSearchOutput,
-                roomId: room.name,
+                room: room,
             });
         })
         .catch( (err) => {

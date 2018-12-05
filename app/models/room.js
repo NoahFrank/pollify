@@ -10,6 +10,11 @@ class Room {
         this.name = name;
         this.owner = owner;
         this.playlistId = null;
+        this.songVotes = {};  // Dictionary that contains all the songs votes for this room
+        // array of song ids that represents the array of songs queued for this room.
+        // Using an array in order to avoid having to attempt to reorder the songs on every retrieve
+        // of the spotify playlist
+        this.songQueue = [];
 
         // Also create a dedicated instance of SpotifyWebApi to make ALL requests for this Room using the given Owner authorized credentials
         this.spotify = require('../models/spotify')(owner);
@@ -77,6 +82,28 @@ class Room {
                     log.error(`Could not refresh the token! error=${err.message}`);
                 }
             );
+        }
+    }
+
+    initializeSongVotes(songId) {
+        if (this.songVotes[songId] == undefined) {
+            this.songVotes[songId] = 0;
+        }
+    }
+
+    addSongVotes(songId) {
+        if (this.songVotes[songId] != undefined) {
+            this.songVotes[songId]++;
+        } else {
+            this.songVotes[songId] = 1;
+        }
+    }
+
+    removeSongVotes(songId) {
+        if (this.songVotes[songId] != undefined) {
+            this.songVotes[songId]--;
+        } else {
+            this.songVotes[songId] = 1;
         }
     }
 }

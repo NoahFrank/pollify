@@ -1,11 +1,11 @@
 extends layout
 
 block content
-    h1 Welcome to #{roomId}
+    h1 Welcome to #{room.name}
     p Please queue a song!
 
     p
-        form(name="spotifySearch", method="post", action="/#{roomId}/search")
+        form(name="spotifySearch", method="post", action="/#{room.name}/search")
             | Search for a Song:
             input(type="text", name="trackSearch")
             input(type="submit", value="Search")
