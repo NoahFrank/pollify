@@ -364,3 +364,21 @@ router.post('/:roomId/remove/:trackId', (req, res, next) => {
 router.post('/:roomId/powerhour', (req, res, next) => {
     res.render('index', { title: 'Express' });
 });
+
+router.delete('/:roomId/close', (req, res, next) => {
+    let roomId = req.params.roomId;
+    if (req.cookies.pollifySession) {
+        let cache = req.app.get('cache');
+        Room.get(roomId, cache)
+            .then( (room) => {
+                room.users.delete(req.cookies.pollifySession);
+                room.save(cache);
+                res.sendStatus(204);
+            })
+            .catch( (err) => {
+                log.error(`${roomId} doesn't exist`);
+                res.sendStatus(404);
+            }
+        );
+    }
+});

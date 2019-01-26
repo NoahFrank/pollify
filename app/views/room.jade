@@ -41,3 +41,11 @@ block roomContent
         else
             p Nothing in queue!
     p Room MOTD - Room description, etc
+
+    script.
+        window.addEventListener("beforeunload", function (e) {
+            $.ajax({
+                method: "DELETE",
+                url: "/#{room.name}/close"
+            });
+        });
