@@ -10,7 +10,10 @@ class Room {
         this.name = name;
         this.owner = owner;
         this.playlistId = null;
-        this.songVotes = {};  // Dictionary that contains all the songs votes for this room
+        // Dictionary that contains all the songs votes and users that have voted for that song for this room
+        // ex. {songId: {votes: 5, voters: [user1, user2, user3, user4, user5]}}
+        this.songVotes = {};
+        this.users = new Set();
         // array of song ids that represents the array of songs queued for this room.
         // Using an array in order to avoid having to attempt to reorder the songs on every retrieve
         // of the spotify playlist
@@ -87,24 +90,28 @@ class Room {
 
     initializeSongVotes(songId) {
         if (this.songVotes[songId] == undefined) {
-            this.songVotes[songId] = 0;
+            this.songVotes[songId] = {};
+            this.songVotes[songId].votes = 0;
+            this.songVotes[songId].users = new Set();
         }
     }
 
-    addSongVotes(songId) {
-        if (this.songVotes[songId] != undefined) {
-            this.songVotes[songId]++;
-        } else {
-            this.songVotes[songId] = 1;
+    addSongVotes(sessionId, songId) {
+        if (!this.songVotes[songId].users.has(sessionId)) {
+            this.songVotes[songId].users.add(sessionId);
+            this.songVotes[songId].votes = this.songVotes[songId].users.size;
         }
     }
 
-    removeSongVotes(songId) {
-        if (this.songVotes[songId] != undefined) {
-            this.songVotes[songId]--;
-        } else {
-            this.songVotes[songId] = 1;
+    removeSongVotes(sessionId, songId) {
+        if (this.songVotes[songId].users.has(sessionId)) {
+            this.songVotes[songId].users.delete(sessionId);
+            this.songVotes[songId].votes = this.songVotes[songId].users.size;
         }
+    }
+
+    getCurrentUsersArray() {
+        return Array.from(this.users);
     }
 }
 

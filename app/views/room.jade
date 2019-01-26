@@ -37,7 +37,7 @@ block roomContent
                             td= track.albumName
                             td= track.artistName
                             td= track.duration
-                            td= room.songVotes[track.id]
+                            td= room.songVotes[track.id].votes
         else
             p Nothing in queue!
     p Room MOTD - Room description, etc

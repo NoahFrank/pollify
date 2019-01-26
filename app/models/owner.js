@@ -3,7 +3,8 @@ const log = require('../../config/logger');
 
 class Owner {
 
-    constructor(profileId, profileName, profileEmail, accessToken, refreshToken, tokenExpirationEpoch) {
+    constructor(sessionId, profileId, profileName, profileEmail, accessToken, refreshToken, tokenExpirationEpoch) {
+        this.sessionId = sessionId;
         this.profileId = profileId;
         this.profileName = profileName;
         this.profileEmail = profileEmail;

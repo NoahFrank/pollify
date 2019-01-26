@@ -4,6 +4,12 @@ block content
     h1 Welcome to #{room.name}
     p Please queue a song!
 
+    if room.users.size > 0
+        h2 Users in room:
+            ul
+                each user in room.getCurrentUsersArray()
+                    li #{user}
+
     p
         form(name="spotifySearch", method="post", action="/#{room.name}/search")
             | Search for a Song:

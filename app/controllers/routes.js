@@ -57,9 +57,6 @@ function buildTrackView(track, includeAlbumImage=false, includeFullTrack=false) 
 
 
 router.get('/', (req, res, next) => {
-    // TODO: Be careful on how we store the JS class in Redis
-    // Source: https://medium.com/@stockholmux/store-javascript-objects-in-redis-with-node-js-the-right-way-1e2e89dbbf64
-
     res.render('index', {
         title: "Pollify"
     });
@@ -72,6 +69,9 @@ router.get('/:roomId', (req, res, next) => {
 
     Room.get(roomId, cache)
         .then( (room) => {
+            // save this user to the room's internal user list
+            room.users.add(req.cookies.pollifySession);
+
             // TODO: Get current playlist "queue" state and pass to view
             if (!room.isPlaylistCreated()) {
                 return noRoomPlaylistError(roomId, res, next);
@@ -144,14 +144,15 @@ router.post('/:roomId/vote', (req, res, next) => {
 
     Room.get(roomId, cache)
         .then( (room) => {
-            room.addSongVotes(songId);
+            room.addSongVotes(req.cookies.pollifySession, songId);
             room.save(cache);
             res.redirect(`/${room.name}`);
         })
         .catch( (err) => {
             log.error(`${roomId} doesn't exist`);
             res.sendStatus(404);
-        });
+        }
+    );
 });
 
 router.post('/:roomId/unvote', (req, res, next) => {
@@ -162,14 +163,15 @@ router.post('/:roomId/unvote', (req, res, next) => {
 
     Room.get(roomId, cache)
         .then( (room) => {
-            room.removeSongVotes(songId);
+            room.removeSongVotes(req.cookies.pollifySession, songId);
             room.save(cache);
             res.redirect(`/${room.name}`);
         })
         .catch( (err) => {
             log.error(`${roomId} doesn't exist`);
             res.sendStatus(404);
-        });
+        }
+    );
 });
 
 router.post('/:roomId/pause', (req, res, next) => {
@@ -250,6 +252,7 @@ router.post('/:roomId/back', (req, res, next) => {
 
 router.post('/join', (req, res, next) => {
     let roomId = req.body.roomId;
+    let cache = req.app.get('cache');
 
     if (roomId === undefined) {
         log.error(`Connection to ${roomId} failed`);
@@ -257,13 +260,24 @@ router.post('/join', (req, res, next) => {
         return next();
     }
 
-    req.app.get('cache').getTtl(roomId, (ttl) => {
+    cache.getTtl(roomId, (ttl) => {
         if (ttl === undefined) {  // Undefined means key does not exist
             log.error(`Attempted to join ${roomId} but room doesn't exist with error=${err} and message=${err.message}`);
             res.sendStatus(404);
         } else {  // 0 or timestamp of how long key-value will be in cache
-            log.info(`Connection to ${roomId} successful`);
-            res.redirect(`/${roomId}`);
+            // save this user to the room's internal user list
+            Room.get(roomId, cache)
+                .then( (room) => {
+                    // save this user to the room's internal user list
+                    room.users.add(req.cookies.pollifySession);
+                    room.save(cache);
+                    res.redirect(`/${room.name}`);
+                })
+                .catch( (err) => {
+                    log.error(`${roomId} doesn't exist`);
+                    res.sendStatus(404);
+                }
+            );
         }
     });
 });
@@ -340,9 +354,6 @@ router.post('/:roomId/search/', (req, res, next) => {
             }
             // 4. Render search results
             res.render('searchResults', {
-                // This doesn't feel great, but not sure how else to
-                // render the search results dynamically without using some
-                // sort of javascript on the frontend to make this query
                 searchQuery: trackSearch,
                 results: trackSearchOutput,
                 room: room,

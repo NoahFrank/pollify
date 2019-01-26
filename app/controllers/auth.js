@@ -78,7 +78,7 @@ router.get('/spotify/callback', passport.authenticate('spotify', { failureRedire
 
         log.debug(`Expire date: ${tokenExpirationEpoch}`);
 
-        let newOwner = new Owner(req.user.id, req.user.username, req.user.emails[0].value, req.user.accessToken, req.user.refreshToken, tokenExpirationEpoch);
+        let newOwner = new Owner(req.cookies.pollifySession, req.user.id, req.user.username, req.user.emails[0].value, req.user.accessToken, req.user.refreshToken, tokenExpirationEpoch);
         let newRoom = new Room(newOwner);
 
         // Also create spotify playlist for this room
