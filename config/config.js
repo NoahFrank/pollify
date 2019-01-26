@@ -8,6 +8,7 @@ const config = {
         app: {
             name: 'pollify'
         },
+        env: 'development',
         port: process.env.PORT || 3000,
     },
 
@@ -16,6 +17,7 @@ const config = {
         app: {
             name: 'pollify'
         },
+        env: 'test',
         port: process.env.PORT || 3000,
     },
 
@@ -24,6 +26,7 @@ const config = {
         app: {
             name: 'pollify'
         },
+        env: 'production',
         port: process.env.PORT || 3000,
     }
 };

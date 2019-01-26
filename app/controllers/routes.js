@@ -266,18 +266,7 @@ router.post('/join', (req, res, next) => {
             res.sendStatus(404);
         } else {  // 0 or timestamp of how long key-value will be in cache
             // save this user to the room's internal user list
-            Room.get(roomId, cache)
-                .then( (room) => {
-                    // save this user to the room's internal user list
-                    room.users.add(req.cookies.pollifySession);
-                    room.save(cache);
-                    res.redirect(`/${room.name}`);
-                })
-                .catch( (err) => {
-                    log.error(`${roomId} doesn't exist`);
-                    res.sendStatus(404);
-                }
-            );
+            res.redirect(`/${roomId}`);
         }
     });
 });

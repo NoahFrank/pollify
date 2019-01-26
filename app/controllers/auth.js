@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
+const config = require('../../config/config');
 
 const appId = require('config').get('appID');
 const appSecret = require('config').get('appSecret');
@@ -84,6 +85,11 @@ router.get('/spotify/callback', passport.authenticate('spotify', { failureRedire
         // Also create spotify playlist for this room
         // I think we can make playlist private because all other user's in room aren't required to login to spotify.
         // They simply use the owner's accessToken, and add/remove tracks with owner's token as well
+        if (config.env == 'development') {
+            ROOM_NAME = "extra-small-kiss";
+            newRoom.name = ROOM_NAME;
+        }
+
         newRoom.spotify.createPlaylist(newOwner.profileId, newRoom.name, { 'public' : false })
             .then( (data) => {
                 log.debug(`Created ${newRoom.name} playlist!  playlist id=${data.body.id}`);
