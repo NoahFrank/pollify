@@ -27,7 +27,7 @@ function noRoomPlaylistError(roomId, res, next) {
 
 
 function buildTrackView(track, includeAlbumImage=false, includeFullTrack=false) {
-    let manipulatedTrack = {};
+    let manipulatedTrack = new Track();
 
     // Set optional fields if supplied
     if (includeFullTrack) {
@@ -44,7 +44,7 @@ function buildTrackView(track, includeAlbumImage=false, includeFullTrack=false) 
     let seconds = track.duration_ms / 1000;
     let minutes = parseInt(seconds / 60);
     let secondsLeftOver = (seconds%60).toFixed(0);
-    manipulatedTrack.duration = `${minutes}:${secondsLeftOver}`;  // TODO: Convert this to human readable
+    manipulatedTrack.duration_ms = `${minutes}:${secondsLeftOver}`;  // TODO: Convert this to human readable
     manipulatedTrack.artistName = "";
     for (let i = 0; i < track.artists.length; i++) {
         let artist = track.artists[i];
@@ -99,28 +99,32 @@ router.get('/:roomId', (req, res, next) => {
                         }
 
                         let manipulatedTrack = buildTrackView(track, includeAlbumImage);
-                        room.initializeSongVotes(manipulatedTrack.id);
-                        trackSearchOutput.push(manipulatedTrack);
+                        room.initializeTrackList(manipulatedTrack);
                     }
 
-                    // Add track if we don't already have it!
+                    // Add track if we don't already have it!  If Spotify already has it, then we ignore this if statement
                     if (!isAddedTrackAlreadyInPlaylist && addedTrack) {
                         let manipulatedTrack = buildTrackView(addedTrack, includeAlbumImage);
-                        trackSearchOutput.push(manipulatedTrack);  // TODO: Make sure addedTrack gets placed in correct position in queue
-                        room.initializeSongVotes(manipulatedTrack.id);
+                        room.initializeTrackList(manipulatedTrack);
 
                         // Make sure to reset cache key for next time
                         cache.del(saltedAddedTrackKey);
                     }
 
                     // TODO: Determine when to save conditionally
-                    room.save(cache);
-
-                    log.info(`Rendering ${roomId}`);
-                    res.render('room', {
-                        room: room,
-                        queue: trackSearchOutput,
-                    });
+                    room.save(cache)
+                        .then( (success) => {
+                            log.info(`Rendering ${roomId}`);
+                            res.render('room', {
+                                roomName: room.name,
+                                queue: room.trackList,
+                                roomUsers: room.getCurrentUsersArray()
+                            });
+                        })
+                        .catch( (err) => {
+                            res.sendStatus(404);
+                        }
+                    );
                 })
                 .catch( (err) => {
                     log.error(`Failed to get Room ${roomId}'s Spotify playlist with error=${err} and message=${err.message}`);
@@ -144,7 +148,12 @@ router.post('/:roomId/vote', (req, res, next) => {
 
     Room.get(roomId, cache)
         .then( (room) => {
-            room.addSongVotes(req.cookies.pollifySession, songId);
+            let track = room.findTrack(songId);
+            if (!track) {
+                log.error(`TrackId=${track.id} doesn't exist`);
+                res.sendStatus(404);
+            }
+            room.addTrackVote(req.cookies.pollifySession, track);
             room.save(cache);
             res.redirect(`/${room.name}`);
         })
@@ -163,7 +172,12 @@ router.post('/:roomId/unvote', (req, res, next) => {
 
     Room.get(roomId, cache)
         .then( (room) => {
-            room.removeSongVotes(req.cookies.pollifySession, songId);
+            let track = room.findTrack(songId);
+            if (!track) {
+                log.error(`TrackId=${track.id} doesn't exist`);
+                res.sendStatus(404);
+            }
+            room.removeTrackVote(req.cookies.pollifySession, track);
             room.save(cache);
             res.redirect(`/${room.name}`);
         })

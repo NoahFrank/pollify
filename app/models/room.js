@@ -10,14 +10,9 @@ class Room {
         this.name = name;
         this.owner = owner;
         this.playlistId = null;
-        // Dictionary that contains all the songs votes and users that have voted for that song for this room
-        // ex. {songId: {votes: 5, voters: [user1, user2, user3, user4, user5]}}
-        this.songVotes = {};
+        // array of track objects that reflects the current top voted songs
+        this.trackList = [];
         this.users = new Set();
-        // array of song ids that represents the array of songs queued for this room.
-        // Using an array in order to avoid having to attempt to reorder the songs on every retrieve
-        // of the spotify playlist
-        this.songQueue = [];
 
         // Also create a dedicated instance of SpotifyWebApi to make ALL requests for this Room using the given Owner authorized credentials
         this.spotify = require('../models/spotify')(owner);
@@ -54,15 +49,19 @@ class Room {
 
     save(cache) {
         return new Promise( (resolve, reject) => {
-            cache.set(this.name, this, (err, success) => {
-                if (success) {
-                    resolve(success);
-                } else {
-                    // Always log error before rejecting
-                    log.error(`Expected saved Room object, but success=${success} with error=${err} and message=${err.message}`);
-                    reject(err);
-                }
-            })
+            // before save perform sorting of tracks based on user votes:
+            this.orderSongs((result) => {
+                // now save
+                cache.set(this.name, this, (err, success) => {
+                    if (success) {
+                        resolve(success);
+                    } else {
+                        // Always log error before rejecting
+                        log.error(`Expected saved Room object, but success=${success} with error=${err} and message=${err.message}`);
+                        reject(err);
+                    }
+                });
+            });
         });
     }
 
@@ -88,30 +87,55 @@ class Room {
         }
     }
 
-    initializeSongVotes(songId) {
-        if (this.songVotes[songId] == undefined) {
-            this.songVotes[songId] = {};
-            this.songVotes[songId].votes = 0;
-            this.songVotes[songId].users = new Set();
+    findTrack(trackId) {
+        for (let roomTrack of this.trackList) {
+            if (roomTrack.id === trackId) {
+                return roomTrack;
+            }
+        }
+        return null;
+    }
+
+    initializeTrackList(track) {
+        if (this.findTrack(track.id)) return;
+
+        this.trackList.push(track);
+    }
+
+    addTrackVote(sessionId, track) {
+        if (!track.users.has(sessionId)) {
+            track.users.add(sessionId);
         }
     }
 
-    addSongVotes(sessionId, songId) {
-        if (!this.songVotes[songId].users.has(sessionId)) {
-            this.songVotes[songId].users.add(sessionId);
-            this.songVotes[songId].votes = this.songVotes[songId].users.size;
-        }
-    }
-
-    removeSongVotes(sessionId, songId) {
-        if (this.songVotes[songId].users.has(sessionId)) {
-            this.songVotes[songId].users.delete(sessionId);
-            this.songVotes[songId].votes = this.songVotes[songId].users.size;
+    removeTrackVote(sessionId, track) {
+        if (track.users.has(sessionId)) {
+            track.users.delete(sessionId);
         }
     }
 
     getCurrentUsersArray() {
         return Array.from(this.users);
+    }
+
+    songSort(a,b) {
+        if (a.users.size > b.users.size) {
+            return -1;
+        }
+        if (a.users.size < b.users.size) {
+            return 1;
+        }
+        // TODO: secondary sort?
+        return 0;
+    }
+
+    orderSongs(callback) {
+        let output = false;
+        if (this.trackList.length) {
+            this.trackList.sort(this.songSort);
+            output = true;
+        }
+        callback(output);
     }
 }
 

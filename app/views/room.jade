@@ -20,13 +20,13 @@ block roomContent
                     each track in queue
                         tr
                             td
-                                form(id="#{track.id}-vote", method="POST", action="/#{room.name}/vote")
+                                form(id="#{track.id}-vote", method="POST", action="/#{roomName}/vote")
                                     //- TODO: csrf
                                     input(type="hidden", name="songId", value="#{track.id}")
                                     button(type="submit")
                                         ="+"
                             td
-                                form(id="#{track.id}-unvote", method="POST", action="/#{room.name}/unvote")
+                                form(id="#{track.id}-unvote", method="POST", action="/#{roomName}/unvote")
                                     //- TODO: csrf
                                     input(type="hidden", name="songId", value="#{track.id}")
                                     button(type="submit")
@@ -37,7 +37,7 @@ block roomContent
                             td= track.albumName
                             td= track.artistName
                             td= track.duration
-                            td= room.songVotes[track.id].votes
+                            td= track.users.size
         else
             p Nothing in queue!
     p Room MOTD - Room description, etc
@@ -46,6 +46,6 @@ block roomContent
         window.addEventListener("beforeunload", function (e) {
             $.ajax({
                 method: "DELETE",
-                url: "/#{room.name}/close"
+                url: "/#{roomName}/close"
             });
         });
