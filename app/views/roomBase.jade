@@ -10,6 +10,38 @@ block content
                 each user in roomUsers
                     li #{user}
 
+    p 
+        if isOwner
+            Room Controls:
+        else
+            Vote Room Controls
+        table
+            thead
+                tr
+                    //- th Play
+                    //- th Skip
+            tbody
+                tr
+                    td
+                        if isOwner
+                            if roomCurrentPlaybackState.is_playing == true
+                                form(id="play", method="POST", action="/#{roomName}/pause")
+                                    //- TODO: csrf
+                                    button(type="submit")
+                                        ="pause"
+                            else
+                                form(id="play", method="POST", action="/#{roomName}/play")
+                                    //- TODO: csrf
+                                    button(type="submit")
+                                        ="play"
+                        else
+                            "vote to play/pause"
+                    td
+                        if isOwner
+                            "spotify next call"
+                        else
+                            "vote to skip"
+
     p
         form(name="spotifySearch", method="post", action="/#{roomName}/search")
             | Search for a Song:

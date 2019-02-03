@@ -14,6 +14,8 @@ class Room {
         this.trackList = [];
         this.users = new Set();
 
+        this.currentPlaybackState = null;
+
         // Also create a dedicated instance of SpotifyWebApi to make ALL requests for this Room using the given Owner authorized credentials
         this.spotify = require('../models/spotify')(owner);
     }
@@ -136,6 +138,24 @@ class Room {
             output = true;
         }
         callback(output);
+    }
+
+    isOwner(sessionId) {
+        return this.owner.sessionId === sessionId;
+    }
+
+    getCurrentPlayback(callback) {
+        // Get room's current playback
+        this.spotify.getMyCurrentPlaybackState()
+            .then( (playback) => {
+                this.currentPlaybackState = playback.body;
+                callback(null, playback);
+            })
+            .catch( (err) => {
+                log.error(`Failed to get Room ${this.name}'s current playback state with error=${err}`);
+                callback(err, null);
+            }
+        );
     }
 }
 

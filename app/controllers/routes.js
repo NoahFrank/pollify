@@ -111,20 +111,28 @@ router.get('/:roomId', (req, res, next) => {
                         cache.del(saltedAddedTrackKey);
                     }
 
-                    // TODO: Determine when to save conditionally
-                    room.save(cache)
-                        .then( (success) => {
-                            log.info(`Rendering ${roomId}`);
-                            res.render('room', {
-                                roomName: room.name,
-                                queue: room.trackList,
-                                roomUsers: room.getCurrentUsersArray()
-                            });
-                        })
-                        .catch( (err) => {
-                            res.sendStatus(404);
+                    // Get room's current playback
+                    room.getCurrentPlayback( (err, result) => {
+                        if (err) {
+                            log.error(`Failed to get Room ${roomId}'s current playback state with error=${err}`);
+                            res.statusSend(500);
                         }
-                    );
+                        room.save(cache)
+                            .then( (success) => {
+                                log.info(`Rendering ${roomId}`);
+                                res.render('room', {
+                                    roomName: room.name,
+                                    isOwner: room.isOwner(req.cookies.pollifySession),
+                                    queue: room.trackList,
+                                    roomUsers: room.getCurrentUsersArray(),
+                                    roomCurrentPlaybackState: room.currentPlaybackState
+                                });
+                            })
+                            .catch( (err) => {
+                                res.sendStatus(404);
+                            }
+                        );
+                    });
                 })
                 .catch( (err) => {
                     log.error(`Failed to get Room ${roomId}'s Spotify playlist with error=${err} and message=${err.message}`);
@@ -189,25 +197,55 @@ router.post('/:roomId/unvote', (req, res, next) => {
 });
 
 router.post('/:roomId/pause', (req, res, next) => {
-    spotify.pause()
-        .then( (result) => {  // Supports device_id flag
-            res.redirect(`/${res.params.roomId}`);
+    let roomId = req.params.roomId;
+    let cache = req.app.get('cache');
+    log.info(`Pausing playback in ${roomId}`);
+
+    Room.get(roomId, cache)
+        .then( (room) => {
+            if (room.isOwner(req.cookies.pollifySession)) {
+                res.sendStatus(403);
+            }
+            room.spotify.pause()
+                .then( (result) => {  // Supports device_id flag
+                    res.redirect(`/${roomId}`);
+                })
+                .catch( (err) => {
+                    log.error(err);
+                    res.status(500).send("Server error: Failed to pause playback.");
+                }
+            );
         })
         .catch( (err) => {
-            log.error(err);
-            res.status(500).send("Server error: Failed to pause playback.");
+            log.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
         }
     );
 });
 
 router.post('/:roomId/play', (req, res, next) => {
-    spotify.play()
-        .then( (result) => {  // Object can be passed to play() to play a specific song, e.g. .play({device_id: wa2324ge5in3E8h, uris: []}
-            res.redirect(`/${res.params.roomId}`);
+    let roomId = req.params.roomId;
+    let cache = req.app.get('cache');
+    log.info(`Playing/Resuming playback in ${roomId}`);
+
+    Room.get(roomId, cache)
+        .then( (room) => {
+            if (room.isOwner(req.cookies.pollifySession)) {
+                res.sendStatus(403);
+            }
+            room.spotify.play()
+                .then( (result) => {  // Object can be passed to play() to play a specific song, e.g. .play({device_id: wa2324ge5in3E8h, uris: []}
+                    res.redirect(`/${roomId}`);
+                })
+                .catch( (err) => {
+                    log.error(err);
+                    res.status(500).send("Server error: Failed to play playback.");
+                }
+            );
         })
         .catch( (err) => {
-            log.error(err);
-            res.status(500).send("Server error: Failed to play playback.");
+            log.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
         }
     );
 });
