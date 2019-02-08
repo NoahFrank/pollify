@@ -4,7 +4,7 @@ block content
     h1 Welcome to #{roomName}
     p Please queue a song!
 
-    if roomUsers.length > 0
+    if roomUsers != undefined && roomUsers.length > 0
         h2 Users in room:
             ul
                 each user in roomUsers
