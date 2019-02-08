@@ -8,6 +8,7 @@ block roomContent
             table
                 thead
                     tr
+                        th Position
                         th Up Doot
                         th Down Doot
                         th Album Cover
@@ -19,6 +20,7 @@ block roomContent
                 tbody
                     each track in queue
                         tr
+                            td= track.position
                             td
                                 form(id="#{track.id}-vote", method="POST", action="/#{room.name}/vote")
                                     //- TODO: csrf

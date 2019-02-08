@@ -8,6 +8,17 @@ block content
         form(name="spotifySearch", method="post", action="/#{room.name}/search")
             | Search for a Song:
             input(type="text", name="trackSearch")
+
+            //select#searchTypeList(name="searchType")
+            //    option(selected)
+            //        | Track
+            //    option
+            //        | Artist
+            //    option
+            //        | Album
+            //    option
+            //        | Playlist
+
             input(type="submit", value="Search")
 
     block roomContent
