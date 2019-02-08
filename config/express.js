@@ -8,6 +8,7 @@ const bodyParser = require('body-parser');
 const compress = require('compression');
 const methodOverride = require('method-override');
 const passport = require('passport');
+const log = require('./logger');
 
 module.exports = (app, config) => {
     const env = process.env.NODE_ENV || 'development';
@@ -23,7 +24,27 @@ module.exports = (app, config) => {
     app.use(bodyParser.urlencoded({
         extended: true
     }));
+
     app.use(cookieParser());
+    app.use(function (req, res, next) {
+        // check if client sent cookie
+        var cookie = req.cookies.pollifySession;
+        if (cookie === undefined) {
+            // no: set a new cookie
+            var randomNumber = Math.random().toString();
+            randomNumber = randomNumber.substring(2, randomNumber.length);
+            res.cookie('pollifySession', randomNumber, {
+                maxAge: 900000,
+                httpOnly: true
+            });
+            log.debug('cookie created successfully');
+        } else {
+            // yes, cookie was already present 
+            log.debug('cookie exists', cookie);
+        }
+        next(); // <-- important!
+    });
+
     app.use(compress());
     app.use(express.static(config.root + '/public'));
     app.use(methodOverride());
