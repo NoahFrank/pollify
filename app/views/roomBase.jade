@@ -4,7 +4,7 @@ block content
     h1 Welcome to #{roomName}
     p Please queue a song!
 
-    if roomUsers.length > 0
+    if roomUsers != undefined && roomUsers.length > 0
         h2 Users in room:
             ul
                 each user in roomUsers
@@ -73,6 +73,17 @@ block content
         form(name="spotifySearch", method="post", action="/#{roomName}/search")
             | Search for a Song:
             input(type="text", name="trackSearch")
+
+            //select#searchTypeList(name="searchType")
+            //    option(selected)
+            //        | Track
+            //    option
+            //        | Artist
+            //    option
+            //        | Album
+            //    option
+            //        | Playlist
+
             input(type="submit", value="Search")
 
     block roomContent

@@ -465,6 +465,7 @@ router.post('/:roomId/search/', (req, res, next) => {
                 searchQuery: trackSearch,
                 results: trackSearchOutput,
                 room: room,
+                roomUsers: room.getCurrentUsersArray()
             });
         })
         .catch( (err) => {
