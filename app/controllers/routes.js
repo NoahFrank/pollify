@@ -205,8 +205,8 @@ router.post('/:roomId/pause', (req, res, next) => {
 
     Room.get(roomId, cache)
         .then( (room) => {
-            if (room.isOwner(req.cookies.pollifySession)) {
-                res.sendStatus(403);
+            if (!room.isOwner(req.cookies.pollifySession)) {
+                return res.sendStatus(403);
             }
             room.spotify.pause()
                 .then( (result) => {  // Supports device_id flag
