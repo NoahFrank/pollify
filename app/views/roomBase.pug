@@ -8,10 +8,10 @@ block content
         h2 Users in room:
             ul
                 each user in roomUsers
-                    li #{user}
+                    li=user
 
     if roomCurrentPlaybackState
-        p 
+        p
             if isOwner
                 Room Controls:
             else
@@ -32,13 +32,13 @@ block content
                     tr
                         if isOwner
                             td
-                                if roomCurrentPlaybackState.is_playing == true
-                                    form(id="pause", method="POST", action="/#{roomName}/pause")
+                                if roomCurrentPlaybackState.is_playing
+                                    form(id="pause", method="POST", action="/" + roomName + "/pause")
                                         //- TODO: csrf
                                         button(type="submit")
                                             ="pause"
                                 else
-                                    form(id="play", method="POST", action="/#{roomName}/play")
+                                    form(id="play", method="POST", action="/" + roomName + "/play")
                                         //- TODO: csrf
                                         button(type="submit")
                                             ="play"
@@ -61,7 +61,7 @@ block content
                                     = buttonText
                         td= roomVotesToSkipCurrentSong.length
                         td
-                            img(src='#{roomCurrentPlaybackState.item.album.images[0].url}', height=64, width=64)
+                            img(src=roomCurrentPlaybackState.item.album.images[0].url, height=64, width=64)
                         td= roomCurrentPlaybackState.item.name
                         td= roomCurrentPlaybackState.item.album.name
                         td= roomCurrentPlaybackState.item.artists[0].name
@@ -70,7 +70,7 @@ block content
         p No currently playing song
 
     p
-        form(name="spotifySearch", method="post", action="/#{roomName}/search")
+        form(name="spotifySearch", method="post", action="/" + roomName + "/search")
             | Search for a Song:
             input(type="text", name="trackSearch")
 

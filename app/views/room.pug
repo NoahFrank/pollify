@@ -22,19 +22,19 @@ block roomContent
                         tr
                             td= track.position
                             td
-                                form(id="#{track.id}-vote", method="POST", action="/#{roomName}/vote")
+                                form(id=track.id + "-vote", method="POST", action="/" + roomName + "/vote")
                                     //- TODO: csrf
-                                    input(type="hidden", name="songId", value="#{track.id}")
+                                    input(type="hidden", name="songId", value=track.id)
                                     button(type="submit")
                                         ="+"
                             td
-                                form(id="#{track.id}-unvote", method="POST", action="/#{roomName}/unvote")
+                                form(id=track.id + "-unvote", method="POST", action="/" + roomName + "/unvote")
                                     //- TODO: csrf
-                                    input(type="hidden", name="songId", value="#{track.id}")
+                                    input(type="hidden", name="songId", value=track.id)
                                     button(type="submit")
                                         ="-"
                             td
-                                img(src='#{track.albumImage}', height=64, width=64)
+                                img(src=track.albumImage, height=64, width=64)
                             td= track.name
                             td= track.albumName
                             td= track.artistName
@@ -48,6 +48,6 @@ block roomContent
         window.addEventListener("beforeunload", function (e) {
             $.ajax({
                 method: "DELETE",
-                url: "/#{roomName}/close"
+                url: "#{roomName}" + "/close"
             });
         });

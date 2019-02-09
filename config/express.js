@@ -16,7 +16,7 @@ module.exports = (app, config) => {
     app.locals.ENV_DEVELOPMENT = env == 'development';
 
     app.set('views', config.root + '/app/views');
-    app.set('view engine', 'jade');
+    app.set('view engine', 'pug');
 
     app.use(favicon(config.root + '/public/favicon.ico'));
     app.use(logger('dev'));
@@ -39,7 +39,7 @@ module.exports = (app, config) => {
             });
             log.debug('cookie created successfully');
         } else {
-            // yes, cookie was already present 
+            // yes, cookie was already present
             log.debug('cookie exists', cookie);
         }
         next(); // <-- important!
