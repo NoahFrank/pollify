@@ -88,49 +88,87 @@ router.get('/spotify/callback', passport.authenticate('spotify', { failureRedire
         if (config.env == 'development') {
             ROOM_NAME = "extra-small-kiss";
             newRoom.name = ROOM_NAME;
+            newRoom.spotify.getUserPlaylists(newRoom.owner.profileId)
+                .then( (data) => {
+                    let firstInstanceOfPlaylist;
+                    for (var i=0; i < data.body.items.length; i++) {
+                        let playlist = data.body.items[i];
+                        if (playlist.name === ROOM_NAME) {
+                            log.debug(`Found an instance of playlist: ${playlist.name}`);
+                            firstInstanceOfPlaylist = playlist;
+                            break;
+                        }
+                    }
+                    newRoom.playlistId = firstInstanceOfPlaylist.id;
+                    newRoom.save(req.app.get('cache'))
+                        .then( (success) => {
+                            log.info(`Created and saved ${newRoom.name}!!! Redirecting to new room...`);
+                            res.redirect(`/${newRoom.name}`);
+                        })
+                        .catch( (err) => {
+                            res.sendStatus(404);
+                        }
+                    );
+
+                    // Set shuffle to false, TODO: Capture shuffle state before we change it, then restore after done with pollify
+                    // TODO: Consider Promise.all to avoid nested promises
+                    newRoom.spotify.setShuffle({state: 'false'})
+                        .then( () => {
+                            log.debug(`Turned Shuffle OFF`);
+                        })
+                        .catch( (err) => {
+                            log.error(`Failed to disable Spotify Shuffle, error=${err} and message=${err.message}`);
+                        }
+                    );
+                })
+                .catch( (err) => {
+                    log.error(`Failed to retrieve playlist with ${ROOM_NAME}`);
+                    log.error(`Error: ${err}`);
+                    res.redirect(`/`);
+                }
+            );
+        } else {
+            newRoom.spotify.createPlaylist(newOwner.profileId, newRoom.name, { 'public' : false })
+                .then( (data) => {
+                    log.debug(`Created ${newRoom.name} playlist!  playlist id=${data.body.id}`);
+                    // Make sure to store reference to Room Playlist!  Very important...
+                    newRoom.playlistId = data.body.id;
+
+                    // Save newRoom into database
+                    newRoom.save(req.app.get('cache'))
+                        .then( (success) => {
+                            log.info(`Created and saved ${newRoom.name}!!! Redirecting to new room...`);
+                            res.redirect(`/${newRoom.name}`);
+                        })
+                        .catch( (err) => {
+                            res.sendStatus(404);
+                        }
+                    );
+
+                    // Set shuffle to false, TODO: Capture shuffle state before we change it, then restore after done with pollify
+                    // TODO: Consider Promise.all to avoid nested promises
+                    newRoom.spotify.setShuffle({state: 'false'})
+                        .then( () => {
+                            log.debug(`Turned Shuffle OFF`);
+                        })
+                        .catch( (err) => {
+                            log.error(`Failed to disable Spotify Shuffle, error=${err} and message=${err.message}`);
+                        }
+                    );
+
+                    /**
+                     * Unfortunately, we are going to have to manually manipulate a Spotify Playlist, inserting, reodering, and removing
+                     * to maintain a queue-like structure because Spotify has no API queuing or queue viewing.
+                     */
+
+                })
+                .catch( (err) => {
+                    // TODO: ROOM WILL NOT SAVE IF THE PLAYLIST ISN'T CREATED
+                    log.error(`Failed to create public playlist named ${newRoom.name}! error=${err} and message=${err.message}`);
+                    res.redirect(`/`);  // TODO: Make sure user knowns why it failed or what they can do to fix it (Premium Spotify only, try again, etc)
+                }
+            );
         }
-
-        newRoom.spotify.createPlaylist(newOwner.profileId, newRoom.name, { 'public' : false })
-            .then( (data) => {
-                log.debug(`Created ${newRoom.name} playlist!  playlist id=${data.body.id}`);
-                // Make sure to store reference to Room Playlist!  Very important...
-                newRoom.playlistId = data.body.id;
-
-                // Save newRoom into database
-                newRoom.save(req.app.get('cache'))
-                    .then( (success) => {
-                        log.info(`Created and saved ${newRoom.name}!!! Redirecting to new room...`);
-                        res.redirect(`/${newRoom.name}`);
-                    })
-                    .catch( (err) => {
-                        res.sendStatus(404);
-                    }
-                );
-
-                // Set shuffle to false, TODO: Capture shuffle state before we change it, then restore after done with pollify
-                // TODO: Consider Promise.all to avoid nested promises
-                newRoom.spotify.setShuffle({state: 'false'})
-                    .then( () => {
-                        log.debug(`Turned Shuffle OFF`);
-                    })
-                    .catch( (err) => {
-                        log.error(`Failed to disable Spotify Shuffle, error=${err} and message=${err.message}`);
-                    }
-                );
-
-                /**
-                 * Unfortunately, we are going to have to manually manipulate a Spotify Playlist, inserting, reodering, and removing
-                 * to maintain a queue-like structure because Spotify has no API queuing or queue viewing.
-                 */
-
-            })
-            .catch( (err) => {
-                // TODO: ROOM WILL NOT SAVE IF THE PLAYLIST ISN'T CREATED
-                log.error(`Failed to create public playlist named ${newRoom.name}! error=${err} and message=${err.message}`);
-                res.redirect(`/`);  // TODO: Make sure user knowns why it failed or what they can do to fix it (Premium Spotify only, try again, etc)
-            }
-        );
-
         log.debug("Finished auth spotify callback");
     }
 );
