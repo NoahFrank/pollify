@@ -15,6 +15,7 @@ class Room {
         this.users = new Set();
 
         this.currentPlaybackState = null;
+        this.votesToSkipCurrentSong = new Set();
 
         // Also create a dedicated instance of SpotifyWebApi to make ALL requests for this Room using the given Owner authorized credentials
         this.spotify = require('../models/spotify')(owner);
@@ -116,8 +117,8 @@ class Room {
         }
     }
 
-    getCurrentUsersArray() {
-        return Array.from(this.users);
+    getSetAsArray(attr) {
+        return Array.from(this[attr]);
     }
 
     songSort(a,b) {
@@ -148,6 +149,10 @@ class Room {
         // Get room's current playback
         this.spotify.getMyCurrentPlaybackState()
             .then( (playback) => {
+                if (Object.keys(playback.body).length === 0) {
+                    this.currentPlaybackState = null;
+                    return callback(null, null);
+                }
                 this.currentPlaybackState = playback.body;
                 callback(null, playback);
             })
@@ -156,6 +161,66 @@ class Room {
                 callback(err, null);
             }
         );
+    }
+
+    voteToSkipCurrentSong(sessionId, cache, callback) {
+        if (!this.votesToSkipCurrentSong.has(sessionId)) {
+            this.votesToSkipCurrentSong.add(sessionId);
+            if (Math.floor(this.votesToSkipCurrentSong.size/this.users.size) > 0.5) {
+                let that = this;
+                this.spotify.skipToNext()
+                    .then( (context) => {  // Triggered when skipToNext promise resolves
+                        log.debug(`Successfully performed a community skip to next track for Room ${this.name}`);
+                        that.votesToSkipCurrentSong = new Set();
+                        that.save(cache)
+                            .then( () => {
+                                log.debug(`Successfully reset rooms votes to skip current track`);
+                                return callback(null, true);
+                            })
+                            .catch( (err) => {
+                                log.error(`Failed to save reset votes to skip current track. error=${err} and message=${err.message}`);
+                                return callback(err, null);
+                            }
+                        );
+                    })
+                    .catch( (err) => {
+                        // Could be getRoomAndSpotify or skipToNext error
+                        log.error(`Failed to perform a community skip! error=${err} and message=${err.message}`);
+                        return callback(err, null);
+                    }
+                );
+            } else {
+                this.save(cache)
+                    .then( () => {
+                        log.debug(`Successfully saved rooms votes to skip current track`);
+                        return callback(null, true);
+                    })
+                    .catch( (err) => {
+                        log.error(`Failed to save votes to skip current track. error=${err} and message=${err.message}`);
+                        return callback(err, null);
+                    }
+                );
+            }
+        } else {
+            return callback(null, false);
+        }
+    }
+
+    unvoteToSkipCurrentSong(sessionId, cache, callback) {
+        if (this.votesToSkipCurrentSong.has(sessionId)) {
+            this.votesToSkipCurrentSong.delete(sessionId);
+            this.save(cache)
+                .then( () => {
+                    log.debug(`Successfully unvoted skipped to next track for Room ${this.name}`);
+                    return callback(null, true);
+                })
+                .catch( (err) => {
+                    log.error(`Failed to unvote skip track in queue! error=${err} and message=${err.message}`);
+                    return callback(err, null);
+                }
+            );
+        }
+        return callback(null, false);
     }
 }
 

@@ -124,8 +124,10 @@ router.get('/:roomId', (req, res, next) => {
                                     roomName: room.name,
                                     isOwner: room.isOwner(req.cookies.pollifySession),
                                     queue: room.trackList,
-                                    roomUsers: room.getCurrentUsersArray(),
-                                    roomCurrentPlaybackState: room.currentPlaybackState
+                                    roomUsers: room.getSetAsArray('users'),
+                                    roomCurrentPlaybackState: room.currentPlaybackState,
+                                    roomVotesToSkipCurrentSong: room.getSetAsArray('votesToSkipCurrentSong'),
+                                    userVotedToSkipCurrentSong: room.votesToSkipCurrentSong.has(req.cookies.pollifySession)
                                 });
                             })
                             .catch( (err) => {
@@ -230,8 +232,8 @@ router.post('/:roomId/play', (req, res, next) => {
 
     Room.get(roomId, cache)
         .then( (room) => {
-            if (room.isOwner(req.cookies.pollifySession)) {
-                res.sendStatus(403);
+            if (!room.isOwner(req.cookies.pollifySession)) {
+                return res.sendStatus(403);
             }
             room.spotify.play()
                 .then( (result) => {  // Object can be passed to play() to play a specific song, e.g. .play({device_id: wa2324ge5in3E8h, uris: []}
@@ -258,20 +260,33 @@ router.post('/:roomId/skip', (req, res, next) => {  // TODO: Should Skip/Back/Pl
         res.sendStatus(400).send("Failed to get room ID");
         return next();
     }
+    let cache = req.app.get('cache');
 
-    Room.get(roomId, req.app.get('cache'))
+    Room.get(roomId, cache)
         .then( (room) => {
-            return Promise.all([room, room.spotify.skipToNext()]);
-        })
-        .then( (context) => {  // Triggered when skipToNext promise resolves
-            let [room, skipToNextResult] = context;
-            log.debug(`Successfully skipped to next track for Room ${room.name}`);
-            res.redirect(`/${roomId}`);
+            if (!room.isOwner(req.cookies.pollifySession)) {
+                log.info(`Unable to call skip without voting if a user isn't the owner. user=${req.cookies.pollifySession}`);
+                return res.sendStatus(403);
+            }
+            room.spotify.skipToNext()
+                .then( (context) => {  // Triggered when skipToNext promise resolves
+                    if (context.statusCode != 204) {
+                        log.error(`Failed to skip track! statusCode=${context.statusCode} and response=${context}`);
+                        return res.redirect(`/${roomId}`);
+                    }
+                    log.debug(`Successfully skipped to next track for Room ${room.name}`);
+                    res.redirect(`/${roomId}`);
+                })
+                .catch( (err) => {
+                    // Could be getRoomAndSpotify or skipToNext error
+                    log.error(`Failed to skip track in queue! error=${err} and message=${err.message}`);
+                    res.status(500).send(`Failed to skip Track in queue for your Room`);
+                }
+            );
         })
         .catch( (err) => {
-            // Could be getRoomAndSpotify or skipToNext error
-            log.error(`Failed to skip track in queue! error=${err} and message=${err.message}`);
-            res.status(500).send(`Failed to skip Track in queue for your Room`);
+            log.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
         }
     );
 });
@@ -298,6 +313,58 @@ router.post('/:roomId/back', (req, res, next) => {
             // Could be getRoomAndSpotify or skipToPrevious error
             log.error(`Failed to skip to previous track in queue! error=${err} and ${err.message}`);
             res.status(500).send(`Failed to skip to previous Track in queue for your Room`);
+        }
+    );
+});
+
+router.post('/:roomId/skip/vote', (req, res, next) => {
+    let roomId = req.params.roomId;
+    if (roomId === undefined) {
+        log.error(`Connection to ${roomId} failed`);
+        res.sendStatus(400).send("Failed to get room ID");
+        return next();
+    }
+    let cache = req.app.get('cache');
+
+    Room.get(roomId, cache)
+        .then( (room) => {
+            room.voteToSkipCurrentSong(req.cookies.pollifySession, cache, (err, result) => {
+                if (err) {
+                    log.error(`Error returned from vote to skip current song. error=${err}`);
+                    return res.sendStatus(500);
+                }
+                res.redirect(`/${roomId}`);
+            });
+        })
+        .catch( (err) => {
+            log.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
+        }
+    );
+});
+
+router.post('/:roomId/skip/unvote', (req, res, next) => {
+    let roomId = req.params.roomId;
+    if (roomId === undefined) {
+        log.error(`Connection to ${roomId} failed`);
+        res.sendStatus(400).send("Failed to get room ID");
+        return next();
+    }
+    let cache = req.app.get('cache');
+
+    Room.get(roomId, cache)
+        .then( (room) => {
+            room.unvoteToSkipCurrentSong(req.cookies.pollifySession, cache, (err, result) => {
+                if (err) {
+                    log.error(`Error returned from vote to skip current song. error=${err}`);
+                    return res.sendStatus(500).send(`Failed to unvote to skip Track in queue for your Room`);
+                }
+                res.redirect(`/${roomId}`);
+            });
+        })
+        .catch( (err) => {
+            log.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
         }
     );
 });
