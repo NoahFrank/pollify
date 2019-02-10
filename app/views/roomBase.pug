@@ -13,9 +13,9 @@ block content
     if roomCurrentPlaybackState
         p
             if isOwner
-                Room Controls:
+                p Room Controls:
             else
-                Vote Room Controls
+                p Vote Room Controls
             table
                 thead
                     tr
@@ -35,13 +35,11 @@ block content
                                 if roomCurrentPlaybackState.is_playing
                                     form(id="pause", method="POST", action="/" + roomName + "/pause")
                                         //- TODO: csrf
-                                        button(type="submit")
-                                            ="pause"
+                                        button(type="submit")= "pause"
                                 else
                                     form(id="play", method="POST", action="/" + roomName + "/play")
                                         //- TODO: csrf
-                                        button(type="submit")
-                                            ="play"
+                                        button(type="submit")= "play"
                         td
                             - var action = "";
                             - var buttonText = "";
@@ -57,8 +55,7 @@ block content
                                     - buttonText = "vote to skip"
                             form(id="skip", method="POST", action=action)
                                 //- TODO: csrf
-                                button(type="submit")
-                                    = buttonText
+                                button(type="submit")= buttonText
                         td= roomVotesToSkipCurrentSong.length
                         td
                             img(src=roomCurrentPlaybackState.item.album.images[0].url, height=64, width=64)
@@ -72,17 +69,17 @@ block content
     p
         form(name="spotifySearch", method="post", action="/" + roomName + "/search")
             | Search for a Song:
-            input(type="text", name="trackSearch")
+            input(type="text", name="searchQuery")
 
-            //select#searchTypeList(name="searchType")
-            //    option(selected)
-            //        | Track
-            //    option
-            //        | Artist
-            //    option
-            //        | Album
-            //    option
-            //        | Playlist
+            select#searchTypeList(name="searchType")
+                option(selected)
+                    | Track
+                option
+                    | Artist
+                //option
+                //    | Album
+                //option
+                //    | Playlist
 
             input(type="submit", value="Search")
 

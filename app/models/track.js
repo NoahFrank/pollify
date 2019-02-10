@@ -17,7 +17,7 @@ class Track {
         this.duration_ms = -1;
         this.type = "";
 
-        this.rawTrackJson = null
+        this.rawTrackJson = null;
 
         this.uri = "";
         this.track_number = -1;

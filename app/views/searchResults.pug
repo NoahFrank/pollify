@@ -7,22 +7,41 @@ block roomContent
     div
         h2 Results:
         table
-            thead
-                tr
-                    th Add To Queue
-                    th Album Cover
-                    th Song Name
-                    th Album
-                    th Artist
-                    th Length
-            tbody
-                each track in results
+            if searchType == "track"
+                thead
                     tr
-                        td
-                            a(href="/" + room.name + "/add/" + track.id) +
-                        td
-                            img(src=track.albumImage, height=64, width=64)
-                        td= track.name
-                        td= track.albumName
-                        td= track.artistName
-                        td= track.duration
+                        th Add To Queue
+                        th Album Cover
+                        th Song Name
+                        th Album
+                        th Artist
+                        th Length
+                tbody
+                    each track in results
+                        tr
+                            td
+                                a(href="/" + room.name + "/add/" + track.id) +
+                            td
+                                img(src=track.albumImage, height=64, width=64)
+                            td= track.name
+                            td= track.albumName
+                            td= track.artistName
+                            td= track.duration
+            else if searchType == "artist"
+                thead
+                    tr
+                        th Artist Photo
+                        th Artist Name
+                        th Popularity
+                tbody
+                    each artist in results
+                        tr
+                            td
+                                if artist.images.length > 0
+                                    img(src=artist.images[0].url, height=64, width=64)
+                                else
+                                    p no img
+                            td= artist.name
+                            td= artist.popularity
+            else
+                p Unknown search type!

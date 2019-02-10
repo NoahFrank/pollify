@@ -3,6 +3,7 @@ const router = express.Router();
 
 const Room = require('../models/room');
 const Track = require('../models/track');
+const Artist = require('../models/artist');
 
 // Setup logging
 const log = require('../../config/logger');
@@ -53,6 +54,18 @@ function buildTrackView(track, includeAlbumImage=false, includeFullTrack=false) 
     }
 
     return manipulatedTrack;
+}
+
+function buildArtistView(artist) {
+    let manipulatedArtist = new Artist();
+
+    manipulatedArtist.id = artist.id;
+    manipulatedArtist.name = artist.name;
+    manipulatedArtist.popularity = artist.popularity;
+    manipulatedArtist.genres = artist.genres;
+    manipulatedArtist.images = artist.images;
+
+    return manipulatedArtist;
 }
 
 
@@ -444,33 +457,50 @@ router.get('/:roomId/add/:trackId', (req, res, next) => {  // TODO: Change back 
 router.post('/:roomId/search/', (req, res, next) => {
     // 1. Get room
     let roomId = req.params.roomId;
-    let trackSearch = req.body.trackSearch;
+    let searchQuery = req.body.searchQuery;
+    let searchType = req.body.searchType.toLowerCase();
     Room.get(roomId, req.app.get('cache'))
         .then( (room) => {
             log.info(`Found Room for search=${room.name}`);
             // 2. Query spotify for results
-            return Promise.all([room, room.spotify.search(trackSearch, ['track'])]);  // Can search many types or combinations of ['album', 'artist', 'playlist', and 'track']
+            return Promise.all([room, room.spotify.search(searchQuery, [searchType])]);  // Can search many types or combinations of ['album', 'artist', 'playlist', and 'track']
         })
         .then( (context) => {
             let [room, data] = context;  // Array deconstruction, why can't we have nice things
-            let tracks = data.body.tracks.items;
-            // 3. Manipulate response to an output we are going to display
             let trackSearchOutput = [];
-            for (let track of tracks) {
-                let manipulatedTrack = buildTrackView(track, true, true);
-                trackSearchOutput.push(manipulatedTrack);
+
+            if (searchType == "track") {
+                let tracks = data.body.tracks.items;
+
+                // 3.a Manipulate response to an output we are going to display
+                for (let track of tracks) {
+                    let manipulatedTrack = buildTrackView(track, true, true);
+                    trackSearchOutput.push(manipulatedTrack);
+                }
+            } else if (searchType == "artist") {
+                let artists = data.body.artists.items;
+
+                // 3.b Manipulate response to an output we are going to display
+                for (let artist of artists) {
+                    let manipulatedArtist = buildArtistView(artist);
+                    trackSearchOutput.push(manipulatedArtist);
+                }
+            } else {
+                log.error(`Unknown searchType=${searchType}, what do we do with search result data!!`);
             }
+
             // 4. Render search results
             res.render('searchResults', {
-                searchQuery: trackSearch,
+                searchQuery: searchQuery,
+                searchType: searchType,
                 results: trackSearchOutput,
                 room: room,
-                roomUsers: room.getSetAsArray()
+                roomUsers: room.getSetAsArray('users')
             });
         })
         .catch( (err) => {
             // Could be Room.get or spotify.search error
-            log.error(`Failed to search for ${trackSearch}! error=${err} and message=${err.message}`);
+            log.error(`Failed to search for ${searchQuery}! error=${err} and message=${err.message}`);
             res.status(500).send(`Failed to add Track to queue for your Room`);
         }
     );
