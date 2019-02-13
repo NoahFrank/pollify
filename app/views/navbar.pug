@@ -1,0 +1,34 @@
+nav.navbar(role='navigation', aria-label='main navigation').is-fixed-top.is-success
+    .navbar-brand
+        a.navbar-item(href='/')
+            img(src='/favicon.ico')
+        a.navbar-burger.burger(role='button', aria-label='menu', aria-expanded='false', data-target='navbarBasicExample')
+            span(aria-hidden='true')
+            //span(aria-hidden='true')
+            //span(aria-hidden='true')
+    #navbarBasicExample.navbar-menu
+        .navbar-start
+            a(href="/").navbar-item
+                | Home
+            //a(href="/").navbar-item
+            //    | Documentation
+            //.navbar-item.has-dropdown.is-hoverable
+            //    a.navbar-link
+            //        | More
+            //    .navbar-dropdown
+            //        a.navbar-item
+            //            | About
+            //        a.navbar-item
+            //            | Jobs
+            //        a.navbar-item
+            //            | Contact
+            //        hr.navbar-divider
+            //        a.navbar-item
+            //            | Report an issue
+        .navbar-end
+            .navbar-item
+                .buttons
+                    a.button.is-primary
+                        strong Join Room
+                    a(href="/auth/spotify").button.is-light
+                        | Log In

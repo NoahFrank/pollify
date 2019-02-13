@@ -1,15 +1,22 @@
 extends layout
 
 block content
-    h1=title
-    p Welcome to #{title}
-    p
-        form(name="join", method="post", action="/join")
-            | Join Room:
-            input(type="text", name="roomId")
-            input(type="submit", value="Join")
-
-    p
-        form(name="auth", method="get", action="/auth/spotify")
-            | Create Room
-            input(type="submit", value="Login and Create Room")
+    h1.title=title
+    p.subtitle Welcome to #{title}
+    .field.is-horizontal
+        .field-label.is-normal
+            label.label Join Room
+        .field-body
+            form(name="join", method="post", action="/join")
+                .field.has-addons
+                    .control
+                        input(type="text", name="roomId", placeholder="Room Name").input
+                    .control
+                        input(type="submit", value="Join Room").button.is-primary.is-normal.is-rounded
+    .field.is-horizontal
+        .field-label.is-normal
+            label.label Create Room
+        .field-body
+            form(name="auth", method="get", action="/auth/spotify")
+                .field
+                    input(type="submit", value="Login and Create Room").button.is-info.is-normal.is-rounded

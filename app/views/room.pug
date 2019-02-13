@@ -1,11 +1,10 @@
 extends roomBase
 
 block roomContent
-    h2 Owner's Room
     div
-        h2 Queue:
+        h2.title.is-size-3 Queue:
         if queue.length > 0
-            table
+            table.table
                 thead
                     tr
                         th Position
@@ -41,8 +40,7 @@ block roomContent
                             td= track.duration
                             td= track.users.size
         else
-            p Nothing in queue!
-    p Room MOTD - Room description, etc
+            p.subtitle Nothing in queue!
 
     script.
         window.addEventListener("beforeunload", function (e) {

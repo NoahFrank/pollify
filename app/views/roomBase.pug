@@ -1,22 +1,23 @@
 extends layout
 
 block content
-    h1 Welcome to #{roomName}
-    p Please queue a song!
+    h1.title Welcome to #{roomName}
+    p.subtitle Please queue a song!
 
     if roomUsers != undefined && roomUsers.length > 0
-        h2 Users in room:
-            ul
-                each user in roomUsers
-                    li=user
+        h2.title.is-size-4 Users in room:
+            .content
+                ul
+                    each user in roomUsers
+                        li=user
 
     if roomCurrentPlaybackState
         p
             if isOwner
-                p Room Controls:
+                p.subtitle Room Controls:
             else
-                p Vote Room Controls
-            table
+                p.subtitle Vote Room Controls
+            table.table
                 thead
                     tr
                         if isOwner
@@ -49,10 +50,10 @@ block content
                             else
                                 if userVotedToSkipCurrentSong
                                     - action = "/" + roomName + "/skip/unvote";
-                                    - buttonText = "unvote to skip"
+                                    - buttonText = "unvote to skip";
                                 else
                                     - action = "/" + roomName + "/skip/vote";
-                                    - buttonText = "vote to skip"
+                                    - buttonText = "vote to skip";
                             form(id="skip", method="POST", action=action)
                                 //- TODO: csrf
                                 button(type="submit")= buttonText
@@ -66,21 +67,22 @@ block content
     else
         p No currently playing song
 
-    p
-        form(name="spotifySearch", method="post", action="/" + roomName + "/search")
-            | Search for a Song:
-            input(type="text", name="searchQuery")
-
-            select#searchTypeList(name="searchType")
-                option(selected)
-                    | Track
-                option
-                    | Artist
-                //option
-                //    | Album
-                //option
-                //    | Playlist
-
-            input(type="submit", value="Search")
+    form(name="spotifySearch", method="post", action="/" + roomName + "/search")
+        .field.has-addons
+            .control
+                input(type="text", name="searchQuery").input.is-info.is-rounded
+            .control
+                .select.is-info.is-rounded
+                    select#searchTypeList(name="searchType")
+                        option(selected)
+                            | Track
+                        option
+                            | Artist
+                        //option
+                        //    | Album
+                        //option
+                        //    | Playlist
+            .control
+                input(type="submit", value="Search").button.is-success.is-rounded
 
     block roomContent

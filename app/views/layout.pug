@@ -2,12 +2,18 @@ doctype html
 html(lang='en')
     head
         meta(charset='UTF-8')
-        meta(name='viewport', content='width=device-width')
+        meta(name='viewport', content="width=device-width, initial-scale=1")
         title= title
         link(rel='stylesheet', href='/css/style.css')
+        link(rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.4/css/bulma.min.css")
+        script(defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js")
+
         script(src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js")
         block css
         block js
 
-    body
-        block content
+    body.has-navbar-fixed-top
+        include navbar
+        section.section.is-medium
+            .container
+                block content

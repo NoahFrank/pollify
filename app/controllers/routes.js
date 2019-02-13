@@ -467,7 +467,7 @@ router.post('/:roomId/search/', (req, res, next) => {
         })
         .then( (context) => {
             let [room, data] = context;  // Array deconstruction, why can't we have nice things
-            let trackSearchOutput = [];
+            let searchOutput = [];
 
             if (searchType == "track") {
                 let tracks = data.body.tracks.items;
@@ -475,7 +475,7 @@ router.post('/:roomId/search/', (req, res, next) => {
                 // 3.a Manipulate response to an output we are going to display
                 for (let track of tracks) {
                     let manipulatedTrack = buildTrackView(track, true, true);
-                    trackSearchOutput.push(manipulatedTrack);
+                    searchOutput.push(manipulatedTrack);
                 }
             } else if (searchType == "artist") {
                 let artists = data.body.artists.items;
@@ -483,7 +483,7 @@ router.post('/:roomId/search/', (req, res, next) => {
                 // 3.b Manipulate response to an output we are going to display
                 for (let artist of artists) {
                     let manipulatedArtist = buildArtistView(artist);
-                    trackSearchOutput.push(manipulatedArtist);
+                    searchOutput.push(manipulatedArtist);
                 }
             } else {
                 log.error(`Unknown searchType=${searchType}, what do we do with search result data!!`);
@@ -493,8 +493,9 @@ router.post('/:roomId/search/', (req, res, next) => {
             res.render('searchResults', {
                 searchQuery: searchQuery,
                 searchType: searchType,
-                results: trackSearchOutput,
+                results: searchOutput,
                 room: room,
+                roomName: room.name,
                 roomUsers: room.getSetAsArray('users')
             });
         })
@@ -513,6 +514,37 @@ router.post('/:roomId/remove/:trackId', (req, res, next) => {
 // TODO: Make powerhour
 router.post('/:roomId/powerhour', (req, res, next) => {
     res.render('index', { title: 'Express' });
+});
+
+router.post('/:roomId/getArtistTopTracks/:artistId', (req, res, next) => {
+    let roomId = req.params.roomId;
+    let artistId = req.params.artistId;
+
+    Room.get(roomId, req.app.get('cache'))
+        .then( (room) => {
+            log.info(`Found Room for search=${room.name}`);
+            // 2. Query spotify for results
+            // TODO: Localize to country's top tracks
+            return Promise.all([room, room.spotify.getArtistTopTracks(artistId, 'US')]);  // Can search many types or combinations of ['album', 'artist', 'playlist', and 'track']
+        })
+        .then( (context) => {
+            let [room, data] = context;  // Array deconstruction, why can't we have nice things
+            let searchOutput = [];
+
+            for (let track of data.body.tracks) {
+                let manipulatedTrack = buildTrackView(track, true, true);
+                searchOutput.push(manipulatedTrack);
+            }
+
+            // 4. Render search results
+            res.json({topTrackData: searchOutput});
+        })
+        .catch( (err) => {
+                // Could be Room.get or spotify.search error
+                log.error(`Failed to get top tracks for artist id=${artistId}! error=${err} and message=${err.message}`);
+                res.status(500).send(`Failed to search for top tracks for artist`);
+            }
+        );
 });
 
 router.delete('/:roomId/close', (req, res, next) => {
