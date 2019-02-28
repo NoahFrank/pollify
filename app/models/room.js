@@ -45,7 +45,7 @@ class Room {
 
     async save(cache) {
         // before save perform sorting of tracks based on user votes:
-        const result = await this.orderSongs;
+        const result = await this.orderSongs();
         // now save
         try {
             // Cache stores (key, value) with set() so we are storing (roomName, roomObject)
@@ -134,8 +134,20 @@ class Room {
         // If we made sorting changes to the FIRST TRACK IN QUEUE, then update playlist in spotify
         if (output && !this.trackList[0].equals(nextTrackPreSort)) {
             // UPDATE SPOTIFY PLAYLIST
-            await this.spotify.removeTracksFromPlaylist(this.playlistId, [this.trackList[0].uri]);
-            await this.spotify.addTracksToPlaylist(this.playlistId, [this.trackList[0].uri], {position: 0});
+            log.debug(`We are updating FIRST TRACK IN QUEUE because it was changed by sort`);
+            // Need to make sure "this.trackList[0].uri" is populated
+            if (this.trackList[0].uri.length == 0) {
+                log.error("First track's uri isn't populated! Huge problem");
+                return false;
+            }
+            try {
+                // TODO: THE PROBLEM AREA, getting bad request
+                await this.spotify.removeTracksFromPlaylist(this.playlistId, [this.trackList[0].uri]);
+                log.debug("We finished removing track?");
+                await this.spotify.addTracksToPlaylist(this.playlistId, [this.trackList[0].uri], {position: 0});
+            } catch(err) {
+                log.error(`Failed to remove or add a track from room's playlist, error=${err} and message=${err.message} and stacktrace=${err.stack}`);
+            }
         }
         return output;
     }
@@ -144,19 +156,19 @@ class Room {
         return this.owner.sessionId === sessionId;
     }
 
-    async getCurrentPlayback(callback) {
+    async getCurrentPlayback() {
         // Get room's current playback
         try {
             const playback = await this.spotify.getMyCurrentPlaybackState();
             if (Object.keys(playback.body).length === 0) {
                 this.currentPlaybackState = null;
-                return callback(null, null);
+                return this.currentPlaybackState;
             }
             this.currentPlaybackState = playback.body;
-            callback(null, playback);
+            return this.currentPlaybackState;
         } catch(err) {
-            log.error(`Failed to get Room ${this.name}'s current playback state with error=${err}`);
-            callback(err, null);
+            log.error(`Failed to get Room ${this.name}'s current playback state with error=${err} and message=${err.message} and stacktrace=${err.stack}`);
+            throw err;
         }
     }
 

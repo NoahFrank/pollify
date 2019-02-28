@@ -7,6 +7,7 @@ const appId = require('config').get('appID');
 const appSecret = require('config').get('appSecret');
 const Room = require('../models/room');
 const Owner = require('../models/owner');
+const Track = require('../models/track');
 
 const SpotifyStrategy = require('passport-spotify').Strategy;
 
@@ -72,7 +73,7 @@ router.get( '/spotify', passport.authenticate('spotify', {  // TODO: We gotta su
 
 
 router.get('/spotify/callback', passport.authenticate('spotify', { failureRedirect: '/failed-spotify-auth' }),
-    function(req, res) {
+    async function(req, res) {
         // Successful authentication, now create room and redirect owner there
         let tokenExpirationEpoch = new Date();
         tokenExpirationEpoch.setSeconds(tokenExpirationEpoch.getSeconds() + req.user.expires_in.expires_in);
@@ -88,45 +89,66 @@ router.get('/spotify/callback', passport.authenticate('spotify', { failureRedire
         if (config.env == 'development') {
             ROOM_NAME = "extra-small-kiss";
             newRoom.name = ROOM_NAME;
-            newRoom.spotify.getUserPlaylists(newRoom.owner.profileId)
-                .then( (data) => {
-                    let firstInstanceOfPlaylist;
-                    for (var i=0; i < data.body.items.length; i++) {
-                        let playlist = data.body.items[i];
-                        if (playlist.name === ROOM_NAME) {
-                            log.debug(`Found an instance of playlist: ${playlist.name}`);
-                            firstInstanceOfPlaylist = playlist;
-                            break;
-                        }
+            try {
+                const data = await newRoom.spotify.getUserPlaylists(newRoom.owner.profileId);
+
+                let firstInstanceOfPlaylist;
+                for (let playlist of data.body.items) {
+                    if (playlist.name === ROOM_NAME) {
+                        log.debug(`Found an instance of playlist: ${playlist.name}`);
+                        firstInstanceOfPlaylist = playlist;
+                        break;
                     }
-                    newRoom.playlistId = firstInstanceOfPlaylist.id;
-                    newRoom.save(req.app.get('cache'))
-                        .then( (success) => {
-                            log.info(`Created and saved ${newRoom.name}!!! Redirecting to new room...`);
-                            res.redirect(`/${newRoom.name}`);
-                        })
-                        .catch( (err) => {
+                }
+                newRoom.playlistId = firstInstanceOfPlaylist.id;
+
+                const playlistTrackData = await newRoom.spotify.getPlaylistTracks(firstInstanceOfPlaylist.id);
+                // Process each track into room's trackList
+                for (let outerTrackData of playlistTrackData.body.items) {
+                    let track = outerTrackData.track;
+                    let newTrack = new Track("Bob");  // TODO: Suggestor storing in db, then we can know who suggested it in the past
+                    newTrack.id = track.id;
+                    newTrack.name = track.name;
+                    newTrack.album = track.album;
+                    newTrack.albumImage = track.album.images[0].url; // Biggest Image of Album Art 640x640
+                    newTrack.artists = track.artists;
+                    newTrack.artistName = track.artists[0].name;
+                    newTrack.popularity = track.popularity;
+                    newTrack.duration_ms = track.duration_ms;
+
+                    newTrack.uri = track.uri;
+                    newTrack.track_number = track.track_number;
+                    newTrack.available_markets = track.available_markets;
+                    newTrack.explicit = track.explicit;
+
+                    newRoom.addTrackToTrackList(newTrack);
+                }
+
+                newRoom.save(req.app.get('cache'))
+                    .then( (success) => {
+                        log.info(`Created and saved ${newRoom.name}!!! Redirecting to new room...`);
+                        res.redirect(`/${newRoom.name}`);
+                    })
+                    .catch( (err) => {
                             res.sendStatus(404);
                         }
                     );
 
-                    // Set shuffle to false, TODO: Capture shuffle state before we change it, then restore after done with pollify
-                    // TODO: Consider Promise.all to avoid nested promises
-                    newRoom.spotify.setShuffle({state: 'false'})
-                        .then( () => {
-                            log.debug(`Turned Shuffle OFF`);
-                        })
-                        .catch( (err) => {
+                // Set shuffle to false, TODO: Capture shuffle state before we change it, then restore after done with pollify
+                // TODO: Consider Promise.all to avoid nested promises
+                newRoom.spotify.setShuffle({state: 'false'})
+                    .then( () => {
+                        log.debug(`Turned Shuffle OFF`);
+                    })
+                    .catch( (err) => {
                             log.error(`Failed to disable Spotify Shuffle, error=${err} and message=${err.message} and stacktrace=${err.stack}`);
                         }
                     );
-                })
-                .catch( (err) => {
-                    log.error(`Failed to retrieve playlist with ${ROOM_NAME}`);
-                    log.error(`Error: ${err}`);
-                    res.redirect(`/`);
-                }
-            );
+            } catch(err) {
+                log.error(`Failed to retrieve playlist with ${ROOM_NAME}`);
+                log.error(`Error: ${err}`);
+                res.redirect(`/`);
+            }
         } else {
             newRoom.spotify.createPlaylist(newOwner.profileId, newRoom.name, { 'public' : false })
                 .then( (data) => {

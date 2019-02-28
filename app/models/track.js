@@ -1,6 +1,12 @@
 // Setup logging
 const log = require('../../config/logger');
 
+/**
+ * Track is dual-purpose in our pollify application.  It gives a class structure to our locally tracked queue in a room,
+ * or trackList.  The second purpose is to also give structure to the slimmed, lite version of a Track that is used for
+ * view rendering.  The second view version of Track uses the same attribute names to keep consistency, but may be confusing
+ * if you are thinking about Track in terms of its first purpose (see buildTrackView()).
+ */
 class Track {
 
     constructor (suggestor) {
