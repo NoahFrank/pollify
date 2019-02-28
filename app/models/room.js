@@ -141,9 +141,7 @@ class Room {
                 return false;
             }
             try {
-                // TODO: THE PROBLEM AREA, getting bad request
-                await this.spotify.removeTracksFromPlaylist(this.playlistId, [this.trackList[0].uri]);
-                log.debug("We finished removing track?");
+                await this.spotify.removeTracksFromPlaylist(this.playlistId, [{uri: this.trackList[0].uri}]);
                 await this.spotify.addTracksToPlaylist(this.playlistId, [this.trackList[0].uri], {position: 0});
             } catch(err) {
                 log.error(`Failed to remove or add a track from room's playlist, error=${err} and message=${err.message} and stacktrace=${err.stack}`);

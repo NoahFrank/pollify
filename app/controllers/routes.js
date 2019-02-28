@@ -47,6 +47,9 @@ function buildTrackView(track, includeAlbumImage=false, includeFullTrack=false) 
         manipulatedTrack.artistName += track.artists.length-1 != i ? ", " : '';
     }
 
+    // Need voted users for this track to render how many votes this track has!
+    manipulatedTrack.users = track.users;
+
     return manipulatedTrack;
 }
 
@@ -384,7 +387,7 @@ router.get('/:roomId/add/:trackId', async (req, res, next) => {  // TODO: Change
             );
 
         // 6. Save our room after adding to track list
-        await room.save();
+        await room.save(cache);
         // 7. Return user to room home
         res.redirect(`/${room.name}`);
     } catch(err) {
