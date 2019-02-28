@@ -117,7 +117,7 @@ router.get('/spotify/callback', passport.authenticate('spotify', { failureRedire
                             log.debug(`Turned Shuffle OFF`);
                         })
                         .catch( (err) => {
-                            log.error(`Failed to disable Spotify Shuffle, error=${err} and message=${err.message}`);
+                            log.error(`Failed to disable Spotify Shuffle, error=${err} and message=${err.message} and stacktrace=${err.stack}`);
                         }
                     );
                 })
@@ -152,7 +152,7 @@ router.get('/spotify/callback', passport.authenticate('spotify', { failureRedire
                             log.debug(`Turned Shuffle OFF`);
                         })
                         .catch( (err) => {
-                            log.error(`Failed to disable Spotify Shuffle, error=${err} and message=${err.message}`);
+                            log.error(`Failed to disable Spotify Shuffle, error=${err} and message=${err.message} and stacktrace=${err.stack}`);
                         }
                     );
 
@@ -164,7 +164,7 @@ router.get('/spotify/callback', passport.authenticate('spotify', { failureRedire
                 })
                 .catch( (err) => {
                     // TODO: ROOM WILL NOT SAVE IF THE PLAYLIST ISN'T CREATED
-                    log.error(`Failed to create public playlist named ${newRoom.name}! error=${err} and message=${err.message}`);
+                    log.error(`Failed to create public playlist named ${newRoom.name}! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
                     res.redirect(`/`);  // TODO: Make sure user knowns why it failed or what they can do to fix it (Premium Spotify only, try again, etc)
                 }
             );

@@ -55,6 +55,10 @@ class Track {
             });
         });
     }
+
+    equals(otherTrack) {
+        return this.id == otherTrack.id;
+    }
 }
 
 module.exports = Track;

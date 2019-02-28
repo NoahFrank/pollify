@@ -112,13 +112,13 @@ router.get('/:roomId', (req, res, next) => {
                         }
 
                         let manipulatedTrack = buildTrackView(track, includeAlbumImage);
-                        room.initializeTrackList(manipulatedTrack);
+                        room.addTrackToTrackList(manipulatedTrack);
                     }
 
                     // Add track if we don't already have it!  If Spotify already has it, then we ignore this if statement
                     if (!isAddedTrackAlreadyInPlaylist && addedTrack) {
                         let manipulatedTrack = buildTrackView(addedTrack, includeAlbumImage);
-                        room.initializeTrackList(manipulatedTrack);
+                        room.addTrackToTrackList(manipulatedTrack);
 
                         // Make sure to reset cache key for next time
                         cache.del(saltedAddedTrackKey);
@@ -150,7 +150,7 @@ router.get('/:roomId', (req, res, next) => {
                     });
                 })
                 .catch( (err) => {
-                    log.error(`Failed to get Room ${roomId}'s Spotify playlist with error=${err} and message=${err.message}`);
+                    log.error(`Failed to get Room ${roomId}'s Spotify playlist with error=${err} and message=${err.message} and stacktrace=${err.stack}`);
                     res.status(500).send("Failed to get Spotify Playlist for this Room");
                     return next();
                 }
@@ -292,7 +292,7 @@ router.post('/:roomId/skip', (req, res, next) => {  // TODO: Should Skip/Back/Pl
                 })
                 .catch( (err) => {
                     // Could be getRoomAndSpotify or skipToNext error
-                    log.error(`Failed to skip track in queue! error=${err} and message=${err.message}`);
+                    log.error(`Failed to skip track in queue! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
                     res.status(500).send(`Failed to skip Track in queue for your Room`);
                 }
             );
@@ -394,7 +394,7 @@ router.post('/join', (req, res, next) => {
 
     cache.getTtl(roomId, (ttl) => {
         if (ttl === undefined) {  // Undefined means key does not exist
-            log.error(`Attempted to join ${roomId} but room doesn't exist with error=${err} and message=${err.message}`);
+            log.error(`Attempted to join ${roomId} but room doesn't exist with error=${err} and message=${err.message} and stacktrace=${err.stack}`);
             res.sendStatus(404);
         } else {  // 0 or timestamp of how long key-value will be in cache
             // save this user to the room's internal user list
@@ -438,7 +438,7 @@ router.get('/:roomId/add/:trackId', (req, res, next) => {  // TODO: Change back 
                 })
                 .catch( (err) => {
                     // TODO: Notify user we failed to add track to spotify playlist "queue"
-                    log.error(`Failed to add track ${newTrack.uri} to playlist for room ${room.name}, likely a spotify API error! error=${err} and message=${err.message}`);
+                    log.error(`Failed to add track ${newTrack.uri} to playlist for room ${room.name}, likely a spotify API error! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
                 }
             );
 
@@ -448,7 +448,7 @@ router.get('/:roomId/add/:trackId', (req, res, next) => {  // TODO: Change back 
         })
         .catch( (err) => {
             // Could be Room.get or getTrackById error
-            log.error(`Failed to add track to queue! error=${err} and message=${err.message}`);
+            log.error(`Failed to add track to queue! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
             res.status(500).send(`Failed to add Track to queue for your Room`);
         }
     );
@@ -501,7 +501,7 @@ router.post('/:roomId/search/', (req, res, next) => {
         })
         .catch( (err) => {
             // Could be Room.get or spotify.search error
-            log.error(`Failed to search for ${searchQuery}! error=${err} and message=${err.message}`);
+            log.error(`Failed to search for ${searchQuery}! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
             res.status(500).send(`Failed to add Track to queue for your Room`);
         }
     );
@@ -541,7 +541,7 @@ router.post('/:roomId/getArtistTopTracks/:artistId', (req, res, next) => {
         })
         .catch( (err) => {
                 // Could be Room.get or spotify.search error
-                log.error(`Failed to get top tracks for artist id=${artistId}! error=${err} and message=${err.message}`);
+                log.error(`Failed to get top tracks for artist id=${artistId}! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
                 res.status(500).send(`Failed to search for top tracks for artist`);
             }
         );
