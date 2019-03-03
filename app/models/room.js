@@ -1,7 +1,12 @@
 const Moniker = require('moniker');
+const Track = require('../models/track');
 
 // Setup logging
 const log = require('../../config/logger');
+
+// CONSTANTS
+const ADDED_TRACK_KEY = "RecentlyAddedTrackThatNeedsToBeStoredBecauseSpotifyDoesn'tUpdateThatQuick";
+// END CONSTANTS
 
 class Room {
     constructor (owner, name=Moniker.generator([Moniker.adjective, Moniker.noun]).choose()) {
@@ -28,7 +33,7 @@ class Room {
         try {
             const room = await cache.get(roomId);
 
-            if (room === null) {
+            if (room === null || room === undefined) {
                 // doesn't exist
                 throw new Error(`${roomId} doesn't exist`);
             } else {
@@ -94,16 +99,102 @@ class Room {
         this.trackList.push(track);
     }
 
+    removeTrack(trackId, cache, callback) {
+        let trackList = this.trackList;
+        let removedTrack;
+        for (let [i, roomTrack] of trackList.entries()) {
+            if (roomTrack.id === trackId) {
+                removedTrack = this.trackList.splice(i, 1);
+                break;
+            }
+        }
+        if (removedTrack.length === 1) {
+            removedTrack = removedTrack[0];
+            // remove the removed track from spotify
+            this.spotify.removeTracksFromPlaylist(this.playlistId, [{uri: removedTrack.getUri()}])
+                .then( (success) => {
+                    this.save(cache)
+                        .then( (success) => {
+                            log.info(`Successfully saved Room ${this.name} with removed track`);
+                            return callback(null, success);
+                        })
+                        .catch( (err) => {
+                            log.error(`Failed to save removed track from playlist. err=${err} and message=${err.message}`);
+                            return callback(err, null);
+                        }
+                    );
+                })
+                .catch( (err) => {
+                    log.error(`Failed to remove track from spotify playlist. err=${err} and message=${err.message}`);
+                    return callback(err, null);
+                }
+            );
+        } else {
+            return callback(null, true);
+        }
+    }
+
+    initializeTrackList(track) {
+        if (this.findTrack(track.id)) return;
+
+        this.trackList.push(track);
+    }
+
     addTrackVote(sessionId, track) {
-        if (!track.users.has(sessionId)) {
-            track.users.add(sessionId);
+        if (!track.votedToSkipUsers.has(sessionId)) {
+            track.votedToSkipUsers.add(sessionId);
         }
     }
 
     removeTrackVote(sessionId, track) {
-        if (track.users.has(sessionId)) {
-            track.users.delete(sessionId);
+        if (track.votedToSkipUsers.has(sessionId)) {
+            track.votedToSkipUsers.delete(sessionId);
         }
+    }
+
+    async voteToRemoveTrack(sessionId, track, cache, callback) {
+        if (track.votedToRemoveUsers.has(sessionId)) {
+            return callback(`User is already voted to remove this track ${track.name}`, false);
+        }
+        track.votedToRemoveUsers.add(sessionId);
+        // This if condition is the skip vote threshold ALGORITHM
+        if (Math.floor(track.votedToRemoveUsers.size/this.users.size) > 0.5) {
+            let thisRoom = this;
+            try {
+                this.removeTrack(track.id, cache, callback);
+            } catch(err) {
+                log.error(`Failed to perform a community remove! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
+                return callback(err, null);
+            }
+        } else {  // Skip vote threshold not met! Just save this room
+            this.save(cache)
+                .then( () => {
+                    log.debug(`Successfully saved rooms votes to remove of Track ${track.name}`);
+                    return callback(null, true);
+                })
+                .catch( (err) => {
+                    log.error(`Failed to save votes to remove of Track ${track.name}. error=${err} and message=${err.message} and stacktrace=${err.stack}`);
+                    return callback(err, null);
+                }
+            );
+        }
+    }
+
+    unvoteToRemoveTrack(sessionId, track, cache, callback) {
+        if (!track.votedToRemoveUsers.has(sessionId)) {
+            return callback(`User is already not voting for to remove this track ${track.name}`, false);
+        }
+        track.votedToRemoveUsers.delete(sessionId);
+        this.save(cache)
+            .then( () => {
+                log.debug(`Successfully unvoted to remove track ${track.name} for Room ${this.name}`);
+                return callback(null, true);
+            })
+            .catch( (err) => {
+                log.error(`Failed to unvote to remove track ${track.name}! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
+                return callback(err, null);
+            }
+        );
     }
 
     getSetAsArray(attr) {
@@ -111,10 +202,10 @@ class Room {
     }
 
     songSort(a,b) {
-        if (a.users.size > b.users.size) {
+        if (a.votedToSkipUsers.size > b.votedToSkipUsers.size) {
             return -1;
         }
-        if (a.users.size < b.users.size) {
+        if (a.votedToSkipUsers.size < b.votedToSkipUsers.size) {
             return 1;
         }
         // TODO: secondary sort?

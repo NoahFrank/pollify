@@ -24,6 +24,10 @@ function noRoomPlaylistError(roomId, res, next) {
 function buildTrackView(track, includeAlbumImage=false, includeFullTrack=false) {
     let manipulatedTrack = new Track();
 
+    // copy over the skip and remove votes
+    manipulatedTrack.votedToSkipUsers = track.votedToSkipUsers;
+    manipulatedTrack.votedToRemoveUsers = track.votedToRemoveUsers;
+
     // Set optional fields if supplied
     if (includeFullTrack) {
         // put raw track to pass to other routes later
@@ -91,6 +95,8 @@ router.get('/:roomId', async (req, res, next) => {
         for (let track of room.trackList) {
             // Create a slimmed down version of Track for rendering view with buildTrackView
             let manipulatedTrack = buildTrackView(track, includeAlbumImage);
+            // determine if the request user has voted to remove this track or not
+            manipulatedTrack.currentUserVotedToRemove = manipulatedTrack.votedToRemoveUsers.has(req.cookies.pollifySession);
             trackViewList.push(manipulatedTrack);
         }
 
@@ -450,7 +456,90 @@ router.post('/:roomId/search/', async (req, res, next) => {
 });
 
 router.post('/:roomId/remove/:trackId', (req, res, next) => {
-    res.render('index', { title: 'Express' });
+    let roomId = req.params.roomId;
+    let trackId = req.params.trackId;
+    let cache = req.app.get('cache');
+
+    Room.get(roomId, cache)
+        .then( (room) => {
+            if (!room.isOwner(req.cookies.pollifySession)) {
+                return res.sendStatus(403);
+            }
+            room.removeTrack(trackId);
+            room.save(cache)
+                .then( (success) => {
+                    res.redirect(`/${room.name}`);
+                })
+                .catch( (err) => {
+                    log.error(`Error saving voted to removed track to room ${roomId}. err=${err} and message=${err.message}`);
+                    res.sendStatus(500);
+                }
+            );
+        })
+        .catch( (err) => {
+            log.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
+        }
+    );
+});
+
+router.post('/:roomId/remove/:trackId/vote', async (req, res, next) => {
+    let roomId = req.params.roomId;
+    let trackId = req.body.trackId;
+    let cache = req.app.get('cache');
+    log.info(`Voting in ${roomId} for ${trackId} to remove`);
+
+    Room.get(roomId, cache)
+        .then( (room) => {
+            let track = room.findTrack(trackId);
+            if (!track) {
+                log.error(`TrackId=${track.id} doesn't exist`);
+                res.sendStatus(404);
+            }
+            room.voteToRemoveTrack(req.cookies.pollifySession, track, cache, function(err, result) {
+                if (err) {
+                    log.error(`Error saving voted to removed track to room ${roomId}. err=${err} and message=${err.message}`);
+                    return res.sendStatus(500);
+                }
+                res.redirect(`/${room.name}`);
+            });
+        })
+        .catch( (err) => {
+            log.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
+        }
+    );
+});
+
+router.post('/:roomId/remove/:trackId/unvote', (req, res, next) => {
+    let roomId = req.params.roomId;
+    let trackId = req.body.trackId;
+    let cache = req.app.get('cache');
+    log.info(`Voting in ${roomId} for ${trackId} to remove`);
+
+    Room.get(roomId, cache)
+        .then( (room) => {
+            let track = room.findTrack(trackId);
+            if (!track) {
+                log.error(`TrackId=${track.id} doesn't exist`);
+                res.sendStatus(404);
+            }
+            room.unvoteToRemoveTrack(req.cookies.pollifySession, track, cache);
+            room.save(cache)
+                .then( (success) => {
+                    res.redirect(`/${room.name}`);
+                })
+                .catch( (err) => {
+                    log.error(`Error saving voted to removed track to room ${roomId}. err=${err} and message=${err.message}`);
+                    res.sendStatus(500);
+                }
+            );
+        })
+        .catch( (err) => {
+            log.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
+        }
+    );
 });
 
 // TODO: Make powerhour

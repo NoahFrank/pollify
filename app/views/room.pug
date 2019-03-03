@@ -10,12 +10,17 @@ block roomContent
                         th Position
                         th Up Doot
                         th Down Doot
+                        th Votes to Skip
                         th Album Cover
                         th Song Name
                         th Album
                         th Artist
                         th Length
-                        th Votes
+                        th Votes To Remove
+                        if isOwner
+                            th Remove
+                        else
+                            th Vote to Remove
                 tbody
                     each track in queue
                         tr
@@ -32,13 +37,32 @@ block roomContent
                                     input(type="hidden", name="songId", value=track.id)
                                     button(type="submit")
                                         ="-"
+                            td= track.votedToSkipUsers.size
                             td
                                 img(src=track.albumImage, height=64, width=64)
                             td= track.name
                             td= track.albumName
                             td= track.artistName
                             td= track.duration_ms
-                            td= track.users.size
+                            td= track.votedToRemoveUsers.size
+                            if isOwner
+                                td
+                                    form(id="#{track.id}-remove", method="POST", action="/" + roomName + "/remove/" + track.id + "/")
+                                        //- TODO: csrf
+                                        input(type="hidden", name="trackId", value=track.id)
+                                        button(type="submit") ="remove"
+                            else
+                                td
+                                    if track.currentUserVotedToRemove
+                                        - action = "/" + roomName + "/remove/" + track.id + "/unvote/";
+                                        - text = "unvote";
+                                    else
+                                        - action = "/" + roomName + "/remove/" + track.id + "/vote/";
+                                        - text = "vote";
+                                    form(id="#{track.id}-remove-#[text}", method="POST", action=action)
+                                        //- TODO: csrf
+                                        input(type="hidden", name="trackId", value=track.id)
+                                        button(type="submit")= text + " to remove"
         else
             p.subtitle Nothing in queue!
 

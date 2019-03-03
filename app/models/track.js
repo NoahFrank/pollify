@@ -10,8 +10,8 @@ const log = require('../../config/logger');
 class Track {
 
     constructor (suggestor) {
-        this.votes = 0;
-        this.users = new Set();  // This is a set of user session key strings
+        this.votedToSkipUsers = new Set();  // This is a set of user session key strings
+        this.votedToRemoveUsers = new Set(); // This is a set of user session key strings
         this.suggestor = suggestor;
 
         this.id = -1;
@@ -64,6 +64,11 @@ class Track {
 
     equals(otherTrack) {
         return this.id == otherTrack.id;
+    }
+
+    getUri() {
+        if (!this.uri) return "spotify:track:"+this.id;
+        return this.uri;
     }
 }
 
