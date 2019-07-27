@@ -10,6 +10,8 @@ const methodOverride = require('method-override');
 const passport = require('passport');
 const log = require('./logger');
 
+const User = require('../app/models/user');
+
 module.exports = (app, config) => {
     const env = process.env.NODE_ENV || 'development';
     app.locals.ENV = env;
@@ -31,12 +33,7 @@ module.exports = (app, config) => {
         var cookie = req.cookies.pollifySession;
         if (cookie === undefined) {
             // no: set a new cookie
-            var randomNumber = Math.random().toString();
-            randomNumber = randomNumber.substring(2, randomNumber.length);
-            res.cookie('pollifySession', randomNumber, {
-                maxAge: 900000,
-                httpOnly: true
-            });
+            User.createUserSession(req, res);
             log.debug('cookie created successfully');
         } else {
             // yes, cookie was already present

@@ -4,6 +4,7 @@ const router = express.Router();
 const Room = require('../models/room');
 const Track = require('../models/track');
 const Artist = require('../models/artist');
+const User = require('../models/user');
 
 // Setup logging
 const log = require('../../config/logger');
@@ -83,8 +84,15 @@ router.get('/:roomId', async (req, res, next) => {
 
     try {
         const room = await Room.get(roomId, cache);
-        // save this user to the room's internal user list
-        room.users.add(req.cookies.pollifySession);
+        let userSession = req.cookies.pollifySession;
+        if (!userSession) {
+            log.debug(`*** Found user session ${userSession} was undefined so lets define it.`);
+            User.createUserSession(req, res);
+        } else {
+            // Only save this user to the room's internal user list
+            // if the user isn't undefined.
+            room.users.add(userSession);
+        }
 
         // TODO: Get current playlist "queue" state and pass to view
         if (!room.isPlaylistCreated()) {

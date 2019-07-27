@@ -29,7 +29,8 @@
     "pug": "^2.0.3",
     "request": "^2.88.0",
     "serve-favicon": "^2.5.0",
-    "spotify-web-api-node": "^4.0.0"
+    "spotify-web-api-node": "^4.0.0",
+    "string-hash": "^1.1.3"
   },
   "devDependencies": {
     "bluebird": "^3.5.3",
