@@ -2,6 +2,10 @@ const path = require('path');
 const rootPath = path.normalize(__dirname + '/..');
 const env = process.env.NODE_ENV || 'development';
 
+// Change default port
+const port = 3000;
+const addr = 'localhost';
+
 const config = {
     development: {
         root: rootPath,
@@ -9,7 +13,8 @@ const config = {
             name: 'pollify'
         },
         env: 'development',
-        port: process.env.PORT || 3000,
+        port: process.env.PORT || port,
+        addr: process.env.ADDR || addr
     },
 
     test: {
@@ -18,7 +23,8 @@ const config = {
             name: 'pollify'
         },
         env: 'test',
-        port: process.env.PORT || 3000,
+        port: process.env.PORT || port,
+        addr: process.env.ADDR || addr
     },
 
     production: {
@@ -27,7 +33,8 @@ const config = {
             name: 'pollify'
         },
         env: 'production',
-        port: process.env.PORT || 3000,
+        port: process.env.PORT || port,
+        addr: process.env.ADDR || addr
     }
 };
 

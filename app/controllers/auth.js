@@ -18,13 +18,12 @@ module.exports = (app) => {
     app.use('/auth', router);
 };
 
-
 passport.use(
     new SpotifyStrategy(
         {
             clientID: appId,
             clientSecret: appSecret,
-            callbackURL: 'http://localhost:3000/auth/spotify/callback'
+            callbackURL: `http://${config.addr}:${config.port}/auth/spotify/callback`
         },
         function (accessToken, refreshToken, expires_in, profile, done) {
             log.debug(`accessToken=${accessToken}`);
