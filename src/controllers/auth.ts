@@ -11,8 +11,6 @@ import { Room } from "../models/room";
 import { Owner } from "../models/owner";
 import { Track } from "../models/track";
 
-// const SpotifyStrategy = require("passport-spotify").Strategy;
-
 // Setup logging
 import logger from "../util/logger";
 import { User } from "../models/user";
@@ -90,13 +88,29 @@ export const loginAuthCallback = (req: Request, res: Response) => {
         json: true
     };
 
-    request.post(authOptions, function(error, response, body: SpotifyTokenResponse) {
+    request.post(authOptions, function(error, response: request.Response, body: SpotifyTokenResponse) {
         if (!error && response.statusCode === 200) {
     
             const access_token: string = body.access_token;
             const refresh_token: string = body.refresh_token;
 
-            console.log("We did it, successfully ripped an access token from spotify's cold dead hands => " + access_token);
+            logger.debug("We did it, successfully ripped an access token from spotify's cold dead hands => " + access_token);
+
+            // TODO: Use spotifySuccessCallback or whatever we need to do with the spotify access token to build a SpotifyWebApi
+
+            const options: request.UrlOptions & request.CoreOptions = {
+                url: "https://api.spotify.com/v1/me",
+                headers: { "Authorization": "Bearer " + access_token },
+                json: true
+            };
+        
+            // use the access token to access the Spotify Web API
+            request.get(options, function(error, response: request.Response, body) {
+                logger.debug(`Spotify user info request status code: ${response.statusCode}`);
+                logger.debug("what is our body structure, do we got id and email and username for owner?");
+                console.log(body);
+            });
+
 
             // we can also pass the token to the browser to make requests from there
             res.redirect("/#" +
@@ -107,7 +121,7 @@ export const loginAuthCallback = (req: Request, res: Response) => {
             );
         } else {
             // Redirect somewhere with flag notifying of spotify auth failure/error
-            console.log(`Failed to authenticate with spotify with statusCode -> ${response.statusCode} and error -> ${error}`);
+            logger.error(`Failed to authenticate with spotify with statusCode -> ${response.statusCode} and error -> ${error}`);
             res.redirect("/#" +
                 querystring.stringify({
                     error: "invalid_token"
@@ -140,96 +154,87 @@ interface SpotifyResponse<T> {
     statusCode: number;
 }
 
+interface SpotifyImage {
+    height: number;
+    width: number;
+    url: string;
+}
+interface SpotifyUserInfo {
+    id: string;  // Same as display_name usually, looks like a username
+    email: string;
+    display_name: string;
+    href: string; // EX: "https://api.spotify.com/v1/users/drutism"
+    images: Array<SpotifyImage>;
+    type: string; // EX: "user"
+    uri: string;  // EX: "spotify:user:drutism"
+}
+
 export const spotifySuccessCallback = async (tokenResponse: SpotifyTokenResponse, req: Request) => {
     // Successful authentication, now create room and redirect owner there
+
+    // Calculate when owner's access token will expire with a timestamp
     const tokenExpirationEpoch = new Date();
     tokenExpirationEpoch.setSeconds(tokenExpirationEpoch.getSeconds() + tokenResponse.expires_in);
 
     logger.debug(`Access Token Expire epoch: ${tokenExpirationEpoch}`);
 
-    // TODO: Where can we get data to instantiate new Owner obj? 
-    const newOwner = new Owner(req.cookies.pollifySession, req.user.id, req.user.username, req.user.emails[0].value, req.user.accessToken, req.user.refreshToken, tokenExpirationEpoch);
-    const newRoom = new Room(newOwner);
+    const options: request.UrlOptions & request.CoreOptions = {
+        url: 'https://api.spotify.com/v1/me',
+        headers: { 'Authorization': 'Bearer ' + tokenResponse.access_token },
+        json: true
+    };
 
-    // Also create spotify playlist for this room
-    // I think we can make playlist private because all other user's in room aren't required to login to spotify.
-    // They simply use the owner's accessToken, and add/remove tracks with owner's token as well
-    if (ENVIRONMENT != "production") {
-        const ROOM_NAME = "extra-small-kiss";
-        newRoom.name = ROOM_NAME;
-        try {
-            const responseData: SpotifyResponse<SpotifyApi.ListOfUsersPlaylistsResponse> = await newRoom.spotify.getUserPlaylists(newRoom.owner.profileId.toString());
-            const data: SpotifyApi.ListOfUsersPlaylistsResponse = responseData.body;
+    // use the access token to access the Spotify Web API
+    request.get(options, async (error, response: request.Response, body: SpotifyUserInfo) => {
 
-            let firstInstanceOfPlaylist;
-            for (const playlist of data.items) {
-                if (playlist.name === ROOM_NAME) {
-                    logger.debug(`Found an instance of playlist: ${playlist.name}`);
-                    firstInstanceOfPlaylist = playlist;
-                    break;
+        // TODO: Where can we get data to instantiate new Owner obj? 
+        const newOwner = new Owner(req.cookies.pollifySession, body.id, body.display_name, body.email, tokenResponse.access_token, tokenResponse.refresh_token, tokenExpirationEpoch);
+        const newRoom = new Room(newOwner);
+
+        // Also create spotify playlist for this room
+        // I think we can make playlist private because all other user's in room aren't required to login to spotify.
+        // They simply use the owner's accessToken, and add/remove tracks with owner's token as well via pollify our software
+        if (ENVIRONMENT != "production") {
+            const ROOM_NAME = "extra-small-kiss";
+            newRoom.name = ROOM_NAME;
+            try {
+                // The userId of getUserPlaylists is optional, if nothing is provided it will use the owner's id
+                const responseData: SpotifyResponse<SpotifyApi.ListOfUsersPlaylistsResponse> = await newRoom.spotify.getUserPlaylists(newRoom.owner.id);
+                const data: SpotifyApi.ListOfUsersPlaylistsResponse = responseData.body;
+
+                let firstInstanceOfPlaylist;
+                for (const playlist of data.items) {
+                    if (playlist.name === ROOM_NAME) {
+                        logger.debug(`Found an instance of playlist: ${playlist.name}`);
+                        firstInstanceOfPlaylist = playlist;
+                        break;
+                    }
                 }
-            }
-            newRoom.playlistId = firstInstanceOfPlaylist.id;
+                newRoom.playlistId = firstInstanceOfPlaylist.id;
 
-            const playlistTrackDataResponse: SpotifyResponse<SpotifyApi.PlaylistTrackResponse> = await newRoom.spotify.getPlaylistTracks(firstInstanceOfPlaylist.id);
-            const playlistTrackData: SpotifyApi.PlaylistTrackResponse = playlistTrackDataResponse.body;
-            // Process each track into room's trackList
-            for (const outerTrackData of playlistTrackData.items) {
-                const track = outerTrackData.track;
-                const newTrack = new Track(new User("Bob"));  // TODO: Suggestor storing in db, then we can know who suggested it in the past
-                newTrack.id = track.id;
-                newTrack.name = track.name;
-                newTrack.album = track.album;
-                newTrack.albumImage = track.album.images[0].url; // Biggest Image of Album Art 640x640
-                newTrack.artists = track.artists;
-                newTrack.artistName = track.artists[0].name;
-                newTrack.popularity = track.popularity;
-                newTrack.duration_ms = track.duration_ms;
+                const playlistTrackDataResponse: SpotifyResponse<SpotifyApi.PlaylistTrackResponse> = await newRoom.spotify.getPlaylistTracks(firstInstanceOfPlaylist.id);
+                const playlistTrackData: SpotifyApi.PlaylistTrackResponse = playlistTrackDataResponse.body;
+                // Process each track into room's trackList
+                for (const outerTrackData of playlistTrackData.items) {
+                    const track = outerTrackData.track;
+                    const newTrack = new Track(new User("Bob"));  // TODO: Suggestor storing in db, then we can know who suggested it in the past
+                    newTrack.id = track.id;
+                    newTrack.name = track.name;
+                    newTrack.album = track.album;
+                    newTrack.albumImage = track.album.images[0].url; // Biggest Image of Album Art 640x640
+                    newTrack.artists = track.artists;
+                    newTrack.artistName = track.artists[0].name;
+                    newTrack.popularity = track.popularity;
+                    newTrack.duration_ms = track.duration_ms;
 
-                newTrack.uri = track.uri;
-                newTrack.track_number = track.track_number;
-                newTrack.available_markets = track.available_markets;
-                newTrack.explicit = track.explicit;
+                    newTrack.uri = track.uri;
+                    newTrack.track_number = track.track_number;
+                    newTrack.available_markets = track.available_markets;
+                    newTrack.explicit = track.explicit;
 
-                newRoom.addTrackToTrackList(newTrack);
-            }
+                    newRoom.addTrackToTrackList(newTrack);
+                }
 
-            newRoom.save(req.app.get("cache"))
-                .then((success) => {
-                    logger.info(`Created and saved ${newRoom.name}!!! Redirecting to new room...`);
-                    res.redirect(`/${newRoom.name}`);
-                })
-                .catch((err) => {
-                    res.sendStatus(404);
-                });
-
-            // Set shuffle to false
-            // TODO: Capture shuffle state before we change it, then restore after done with pollify
-            // TODO: Consider Promise.all to avoid nested promises
-            const options: any = {
-                state: "false"
-            };
-            newRoom.spotify.setShuffle(options)
-                .then(() => {
-                    logger.debug("Turned Shuffle OFF");
-                })
-                .catch((err) => {
-                    logger.error(`Failed to disable Spotify Shuffle, error=${err} and message=${err.message} and stacktrace=${err.stack}`);
-                });
-        } catch (err) {
-            logger.error(`Failed to retrieve playlist with ${ROOM_NAME}`);
-            logger.error(`Error: ${err}`);
-            res.redirect("/");
-        }
-    } else {
-        newRoom.spotify.createPlaylist(newOwner.profileId.toString(), newRoom.name, { "public": false })
-            .then((dataResponse: SpotifyResponse<SpotifyApi.CreatePlaylistResponse>) => {
-                const data: SpotifyApi.CreatePlaylistResponse = dataResponse.body;
-                logger.debug(`Created ${newRoom.name} playlist!  playlist id=${data.id}`);
-                // Make sure to store reference to Room Playlist!  Very important...
-                newRoom.playlistId = data.id;
-
-                // Save newRoom into database
                 newRoom.save(req.app.get("cache"))
                     .then((success) => {
                         logger.info(`Created and saved ${newRoom.name}!!! Redirecting to new room...`);
@@ -239,7 +244,8 @@ export const spotifySuccessCallback = async (tokenResponse: SpotifyTokenResponse
                         res.sendStatus(404);
                     });
 
-                // Set shuffle to false, TODO: Capture shuffle state before we change it, then restore after done with pollify
+                // Set shuffle to false
+                // TODO: Capture shuffle state before we change it, then restore after done with pollify
                 // TODO: Consider Promise.all to avoid nested promises
                 const options: any = {
                     state: "false"
@@ -250,20 +256,57 @@ export const spotifySuccessCallback = async (tokenResponse: SpotifyTokenResponse
                     })
                     .catch((err) => {
                         logger.error(`Failed to disable Spotify Shuffle, error=${err} and message=${err.message} and stacktrace=${err.stack}`);
-                    }
-                    );
+                    });
+            } catch (err) {
+                logger.error(`Failed to retrieve playlist with ${ROOM_NAME}`);
+                logger.error(`Error: ${err}`);
+                res.redirect("/");
+            }
+        } else {
+            logger.error("spotify authentication callback (production-only) has not been implemented yet");
+            // newRoom.spotify.createPlaylist(newOwner.profileId.toString(), newRoom.name, { "public": false })
+            //     .then((dataResponse: SpotifyResponse<SpotifyApi.CreatePlaylistResponse>) => {
+            //         const data: SpotifyApi.CreatePlaylistResponse = dataResponse.body;
+            //         logger.debug(`Created ${newRoom.name} playlist!  playlist id=${data.id}`);
+            //         // Make sure to store reference to Room Playlist!  Very important...
+            //         newRoom.playlistId = data.id;
 
-                /**
-                 * Unfortunately, we are going to have to manually manipulate a Spotify Playlist, inserting, reodering, and removing
-                 * to maintain a queue-like structure because Spotify has no API queuing or queue viewing.
-                 */
+            //         // Save newRoom into database
+            //         newRoom.save(req.app.get("cache"))
+            //             .then((success) => {
+            //                 logger.info(`Created and saved ${newRoom.name}!!! Redirecting to new room...`);
+            //                 res.redirect(`/${newRoom.name}`);
+            //             })
+            //             .catch((err) => {
+            //                 res.sendStatus(404);
+            //             });
 
-            })
-            .catch((err) => {
-                // TODO: ROOM WILL NOT SAVE IF THE PLAYLIST ISN'T CREATED
-                logger.error(`Failed to create public playlist named ${newRoom.name}! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
-                res.redirect("/");  // TODO: Make sure user knowns why it failed or what they can do to fix it (Premium Spotify only, try again, etc)
-            });
-    }
+            //         // Set shuffle to false, TODO: Capture shuffle state before we change it, then restore after done with pollify
+            //         // TODO: Consider Promise.all to avoid nested promises
+            //         const options: any = {
+            //             state: "false"
+            //         };
+            //         newRoom.spotify.setShuffle(options)
+            //             .then(() => {
+            //                 logger.debug("Turned Shuffle OFF");
+            //             })
+            //             .catch((err) => {
+            //                 logger.error(`Failed to disable Spotify Shuffle, error=${err} and message=${err.message} and stacktrace=${err.stack}`);
+            //             }
+            //             );
+
+            //         /**
+            //          * Unfortunately, we are going to have to manually manipulate a Spotify Playlist, inserting, reodering, and removing
+            //          * to maintain a queue-like structure because Spotify has no API queuing or queue viewing.
+            //          */
+
+            //     })
+            //     .catch((err) => {
+            //         // TODO: ROOM WILL NOT SAVE IF THE PLAYLIST ISN'T CREATED
+            //         logger.error(`Failed to create public playlist named ${newRoom.name}! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
+            //         res.redirect("/");  // TODO: Make sure user knowns why it failed or what they can do to fix it (Premium Spotify only, try again, etc)
+            //     });
+        }
+    });
     logger.debug("Finished auth spotify callback");
 }
