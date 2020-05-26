@@ -2,26 +2,27 @@
 // import * as express from "express";
 // const router = express.Router();
 
-// import { Room } from "../models/room";
-// import { Track } from "../models/track";
+import { Room } from "../models/room";
+import { Track } from "../models/track";
 // import { Artist } from "../models/artist";
-// import { User } from "../models/user";
+import { User } from "../models/user";
 
 // // Setup logging
 // import { log } from "../config/logger";
 // import { Application, NextFunction } from "express";
-// import { Request, Response } from "express-serve-static-core";
+import { Request, Response, NextFunction } from "express-serve-static-core";
+import logger from "../util/logger";
 // import { app } from "../app";
 
 // module.exports = (app: Application) => {
 //     app.use("/", router);
 // };
 
-// function noRoomPlaylistError(roomId: string, res: Response, next: NextFunction) {
-//     log.error(`This room (${roomId}) has no linked playlist!  That's a huge problem...`);
-//     res.status(500).send("Failed to add track because this Room doesn't have a Spotify playlist!");
-//     return next();
-// }
+function noRoomPlaylistError(roomId: string, res: Response, next: NextFunction) {
+    logger.error(`This room (${roomId}) has no linked playlist!  That's a huge problem...`);
+    res.status(500).send("Failed to add track because this Room doesn't have a Spotify playlist!");
+    return next();
+}
 
 // function buildTrackView(track: SpotifyApi.TrackObjectFull, includeAlbumImage = false, includeFullTrack = false) {
 //     const manipulatedTrack = new Track();
@@ -70,72 +71,72 @@
 //     return manipulatedArtist;
 // }
 
-// router.get("/", (req: Request, res: Response, next: NextFunction) => {
-//     res.render("index", {
-//         title: "Pollify"
-//     });
-// });
+export const home = (req: Request, res: Response) => {
+    res.render("migrated/index", {
+        title: "Pollify"
+    });
+};
 
-// router.get("/:roomId", async (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     const cache = req.app.get("cache");
-//     const includeAlbumImage = true;
+export const findRoom = async (req: Request, res: Response, next: NextFunction) => {
+    const roomId = req.params.roomId;
+    const cache = req.app.get("cache");
+    const includeAlbumImage = true;
 
-//     try {
-//         const room = await Room.get(roomId, cache);
-//         const userSession = req.cookies.pollifySession;
-//         if (!userSession) {
-//             log.debug(`*** Found user session ${userSession} was undefined so lets define it.`);
-//             User.createUserSession(req, res);
-//         } else {
-//             // Only save this user to the room's internal user list
-//             // if the user isn't undefined.
-//             room.users.add(userSession);
-//         }
+    try {
+        const room = await Room.get(roomId, cache);
+        const userSession = req.cookies.pollifySession;
+        if (!userSession) {
+            logger.debug(`*** Found user session ${userSession} was undefined so lets define it.`);
+            User.createUserSession(req, res);
+        } else {
+            // Only save this user to the room's internal user list
+            // if the user isn't undefined.
+            room.users.add(userSession);
+        }
 
-//         // TODO: Get current playlist "queue" state and pass to view
-//         if (!room.isPlaylistCreated()) {
-//             return noRoomPlaylistError(roomId, res, next);
-//         }
+        // TODO: Get current playlist "queue" state and pass to view
+        if (!room.isPlaylistCreated()) {
+            return noRoomPlaylistError(roomId, res, next);
+        }
 
-//         const trackViewList = [];  // Used for rendering queue of Tracks in Room, room.trackList is position-sensitive
-//         for (const track of room.trackList) {
-//             // Create a slimmed down version of Track for rendering view with buildTrackView
-//             const manipulatedTrack = Track.copy(track);
-//             // determine if the request user has voted to remove this track or not
-//             manipulatedTrack.currentUserVotedToRemove = manipulatedTrack.votedToRemoveUsers.has(req.cookies.pollifySession);
-//             trackViewList.push(manipulatedTrack);
-//         }
+        const trackViewList: Track[] = [];  // Used for rendering queue of Tracks in Room, room.trackList is position-sensitive
+        for (const track of room.trackList) {
+            // Create a slimmed down version of Track for rendering view with buildTrackView
+            const manipulatedTrack = Track.copy(track);
+            // determine if the request user has voted to remove this track or not
+            manipulatedTrack.currentUserVotedToRemove = manipulatedTrack.votedToRemoveUsers.has(req.cookies.pollifySession);
+            trackViewList.push(manipulatedTrack);
+        }
 
-//         try {
-//             // Get room's current playback to pass to view
-//             const currentPlaybackState = await room.getCurrentPlayback();
-//             room.save(cache)
-//                 .then((success) => {
-//                     log.info(`Rendering ${roomId}`);
-//                     res.render("room", {
-//                         roomName: room.name,
-//                         isOwner: room.isOwner(req.cookies.pollifySession),
-//                         queue: trackViewList,
-//                         roomUsers: room.getSetAsArray("users"),
-//                         roomCurrentPlaybackState: currentPlaybackState,
-//                         roomVotesToSkipCurrentSong: room.getSetAsArray("votesToSkipCurrentSong"),
-//                         userVotedToSkipCurrentSong: room.votesToSkipCurrentSong.has(req.cookies.pollifySession)
-//                     });
-//                 })
-//                 .catch((err) => {
-//                     log.error(`Failed to save roomId=${roomId}, error=${err} and message=${err.message} and stacktrace=${err.stack}`);
-//                     res.sendStatus(404);
-//                 }
-//                 );
-//         } catch (err) {
-//             return res.sendStatus(500);
-//         }
-//     } catch (err) {
-//         log.error(`Unhandled Exception. error=${err} message=${err.message} stack=${err.stack}`);
-//         res.sendStatus(404);
-//     }
-// });
+        try {
+            // Get room's current playback to pass to view
+            const currentPlaybackState = await room.getCurrentPlayback();
+            room.save(cache)
+                .then((success) => {
+                    logger.info(`Rendering ${roomId}`);
+                    res.render("migrated/room", {
+                        roomName: room.name,
+                        isOwner: room.isOwner(req.cookies.pollifySession),
+                        queue: trackViewList,
+                        roomUsers: room.getSetAsArray("users"),
+                        roomCurrentPlaybackState: currentPlaybackState,
+                        roomVotesToSkipCurrentSong: room.getSetAsArray("votesToSkipCurrentSong"),
+                        userVotedToSkipCurrentSong: room.votesToSkipCurrentSong.has(req.cookies.pollifySession)
+                    });
+                })
+                .catch((err) => {
+                    logger.error(`Failed to save roomId=${roomId}, error=${err} and message=${err.message} and stacktrace=${err.stack}`);
+                    res.sendStatus(404);
+                }
+                );
+        } catch (err) {
+            return res.sendStatus(500);
+        }
+    } catch (err) {
+        logger.error(`Unhandled Exception. error=${err} message=${err.message} stack=${err.stack}`);
+        res.sendStatus(404);
+    }
+};
 
 // router.post("/:roomId/vote", async (req: Request, res: Response, next: NextFunction) => {
 //     const roomId = req.params.roomId;
@@ -227,42 +228,43 @@
 //     }
 // });
 
-// router.post("/:roomId/skip", async (req: Request, res: Response, next: NextFunction) => {  // TODO: Should Skip/Back/Play be GET or POST? Owner override or vote-based events?
-//     // Need some security check that this was actually backed by vote
-//     const roomId = req.params.roomId;
-//     if (roomId === undefined) {
-//         log.error(`Connection to ${roomId} failed`);
-//         res.sendStatus(400).send("Failed to get room ID");
-//         return next();
-//     }
-//     const cache = req.app.get("cache");
+export const roomSkip = async (req: Request, res: Response, next: NextFunction) => {  // TODO: Should Skip/Back/Play be GET or POST? Owner override or vote-based events?
+    // Need some security check that this was actually backed by vote
+    const roomId = req.params.roomId;
+    if (roomId === undefined) {
+        logger.error(`Connection to ${roomId} failed`);
+        res.sendStatus(400).send("Failed to get room ID");
+        return next();
+    }
+    const cache = req.app.get("cache");
 
-//     try {
-//         const room = await Room.get(roomId, cache);
+    try {
+        const room = await Room.get(roomId, cache);
 
-//         if (!room.isOwner(req.cookies.pollifySession)) {
-//             log.info(`Unable to call skip without voting if a user isn't the owner. user=${req.cookies.pollifySession}`);
-//             return res.sendStatus(403);
-//         }
-//         room.spotify.skipToNext()
-//             .then((context: Response) => {  // Triggered when skipToNext promise resolves
-//                 if (context.statusCode != 204) {
-//                     log.error(`Failed to skip track, not HTTP status 204! statusCode=${context.statusCode} and response=${context}`);
-//                     return res.redirect(`/${roomId}`);
-//                 }
-//                 log.debug(`Successfully skipped to next track for Room ${room.name}`);
-//                 res.redirect(`/${roomId}`);
-//             })
-//             .catch((err) => {
-//                 // Could be getRoomAndSpotify or skipToNext error
-//                 log.error(`Failed to skip track in queue! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
-//                 res.status(500).send("Failed to skip Track in queue for your Room");
-//             }
-//             );
-//     } catch (err) {
-//         res.sendStatus(404);
-//     }
-// });
+        if (!room.isOwner(req.cookies.pollifySession)) {
+            logger.info(`Unable to call skip without voting if a user isn't the owner. user=${req.cookies.pollifySession}`);
+            return res.sendStatus(403);
+        }
+        room.spotify.skipToNext()
+            .then((context) => {  // Triggered when skipToNext promise resolves
+                const respContext = context as unknown as Response;
+                if (respContext.statusCode != 204) {
+                    logger.error(`Failed to skip track, not HTTP status 204! statusCode=${respContext.statusCode} and response=${respContext}`);
+                    return res.redirect(`/${roomId}`);
+                }
+                logger.debug(`Successfully skipped to next track for Room ${room.name}`);
+                res.redirect(`/room/${roomId}`);
+            })
+            .catch((err) => {
+                // Could be getRoomAndSpotify or skipToNext error
+                logger.error(`Failed to skip track in queue! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
+                res.status(500).send("Failed to skip Track in queue for your Room");
+            }
+            );
+    } catch (err) {
+        res.sendStatus(404);
+    }
+};
 
 // router.post("/:roomId/back", async (req: Request, res: Response, next: NextFunction) => {
 //     // Need some security check that this was actually backed by vote

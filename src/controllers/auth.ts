@@ -41,16 +41,16 @@ const STATE_KEY = "spotify_auth_state";
 export const loginStartAuth = (req: Request, res: Response) => {
     const state: string = generateRandomString(16);
     res.cookie(STATE_KEY, state);
-  
+
     // your application requests authorization
     res.redirect("https://accounts.spotify.com/authorize?" +
-      querystring.stringify({
-        response_type: "code",
-        client_id: SPOTIFY_APP_ID,
-        scope: AUTH_SCOPE.join(" "),
-        redirect_uri: REDIRECT_URI,
-        state: state
-      }));
+        querystring.stringify({
+            response_type: "code",
+            client_id: SPOTIFY_APP_ID,
+            scope: AUTH_SCOPE.join(" "),
+            redirect_uri: REDIRECT_URI,
+            state: state
+        }));
 };
 
 interface SpotifyTokenResponse {
@@ -67,7 +67,7 @@ export const loginAuthCallback = (req: Request, res: Response) => {
     const code = req.query.code || null;
     const state = req.query.state || null;
     const storedState = req.cookies ? req.cookies[STATE_KEY] : null;
-    
+
     if (state === null || state !== storedState) {
         return res.redirect("/#" + querystring.stringify({ error: "state_mismatch" }));
     }
@@ -88,9 +88,9 @@ export const loginAuthCallback = (req: Request, res: Response) => {
         json: true
     };
 
-    request.post(authOptions, function(error, response: request.Response, body: SpotifyTokenResponse) {
+    request.post(authOptions, function (error, response: request.Response, body: SpotifyTokenResponse) {
         if (!error && response.statusCode === 200) {
-    
+
             const access_token: string = body.access_token;
             const refresh_token: string = body.refresh_token;
 
@@ -103,22 +103,24 @@ export const loginAuthCallback = (req: Request, res: Response) => {
                 headers: { "Authorization": "Bearer " + access_token },
                 json: true
             };
-        
+
             // use the access token to access the Spotify Web API
-            request.get(options, function(error, response: request.Response, body) {
+            request.get(options, function (error, response: request.Response, body) {
                 logger.debug(`Spotify user info request status code: ${response.statusCode}`);
-                logger.debug("what is our body structure, do we got id and email and username for owner?");
-                console.log(body);
+                logger.debug(`what is our body structure, do we got id and email and username for owner?\n${JSON.stringify(body)}`);
+
             });
 
+            // TODO: Testing that this will work here:
+            spotifyCallbackSuccess(body, req, res);
 
             // we can also pass the token to the browser to make requests from there
-            res.redirect("/#" +
-                querystring.stringify({
-                    access_token: access_token,
-                    refresh_token: refresh_token
-                })
-            );
+            // res.redirect("/auth/spotify/success#" +
+            //     querystring.stringify({
+            //         access_token: access_token,
+            //         refresh_token: refresh_token
+            //     })
+            // );
         } else {
             // Redirect somewhere with flag notifying of spotify auth failure/error
             logger.error(`Failed to authenticate with spotify with statusCode -> ${response.statusCode} and error -> ${error}`);
@@ -138,11 +140,11 @@ export const loginAuthCallback = (req: Request, res: Response) => {
  * @return {string} The generated string
  */
 const generateRandomString = (length: number): string => {
-    let text: string = "";
-    const possible: string = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  
-    for (let i: number = 0; i < length; i++) {
-      text += possible.charAt(Math.floor(Math.random() * possible.length));
+    let text = "";
+    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+    for (let i = 0; i < length; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
     return text;
 };
@@ -169,7 +171,7 @@ interface SpotifyUserInfo {
     uri: string;  // EX: "spotify:user:drutism"
 }
 
-export const spotifySuccessCallback = async (tokenResponse: SpotifyTokenResponse, req: Request) => {
+const spotifyCallbackSuccess = async (tokenResponse: SpotifyTokenResponse, req: Request, res: Response) => {
     // Successful authentication, now create room and redirect owner there
 
     // Calculate when owner's access token will expire with a timestamp
@@ -179,16 +181,26 @@ export const spotifySuccessCallback = async (tokenResponse: SpotifyTokenResponse
     logger.debug(`Access Token Expire epoch: ${tokenExpirationEpoch}`);
 
     const options: request.UrlOptions & request.CoreOptions = {
-        url: 'https://api.spotify.com/v1/me',
-        headers: { 'Authorization': 'Bearer ' + tokenResponse.access_token },
+        url: "https://api.spotify.com/v1/me",
+        headers: { "Authorization": "Bearer " + tokenResponse.access_token },
         json: true
     };
 
     // use the access token to access the Spotify Web API
     request.get(options, async (error, response: request.Response, body: SpotifyUserInfo) => {
+        logger.debug(`Returned body from auth check: ${JSON.stringify(body)}`);
+        if (error != null) {
+            logger.error(`Failed to validate auth token against spotify. Error=${error}`);
+            res.redirect("/");
+        }
 
-        // TODO: Where can we get data to instantiate new Owner obj? 
-        const newOwner = new Owner(req.cookies.pollifySession, body.id, body.display_name, body.email, tokenResponse.access_token, tokenResponse.refresh_token, tokenExpirationEpoch);
+        // TODO: Where can we get data to instantiate new Owner obj?
+        let pollifySession = "";
+        if ("cookies" in req) {
+            pollifySession = req.cookies.pollifySession;
+        }
+        logger.debug(`Checking pollifySession: ${pollifySession}`);
+        const newOwner = new Owner(pollifySession, body.id, body.display_name, body.email, tokenResponse.access_token, tokenResponse.refresh_token, tokenExpirationEpoch);
         const newRoom = new Room(newOwner);
 
         // Also create spotify playlist for this room
@@ -238,7 +250,7 @@ export const spotifySuccessCallback = async (tokenResponse: SpotifyTokenResponse
                 newRoom.save(req.app.get("cache"))
                     .then((success) => {
                         logger.info(`Created and saved ${newRoom.name}!!! Redirecting to new room...`);
-                        res.redirect(`/${newRoom.name}`);
+                        res.redirect(`/room/${newRoom.name}`);
                     })
                     .catch((err) => {
                         res.sendStatus(404);
@@ -309,4 +321,4 @@ export const spotifySuccessCallback = async (tokenResponse: SpotifyTokenResponse
         }
     });
     logger.debug("Finished auth spotify callback");
-}
+};

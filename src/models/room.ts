@@ -93,7 +93,7 @@ export class Room {
                 this.owner.refreshToken = data.body.access_token;
 
                 logger.info(
-                    `Refreshed token for room owner's profile_id=${this.owner.profileId}. 
+                    `Refreshed token for room owner's profile_id=${this.owner.id}. 
                         It now expires at ${new Date(tokenExpirationEpoch)}!`
                 );
             } catch (err) {
