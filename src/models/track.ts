@@ -2,6 +2,7 @@
 import logger from "../util/logger";
 import { User } from "./user";
 import SpotifyWebApi from "spotify-web-api-node";
+import { convertMilliToReadable } from "../util/helper";
 
 /**
  * Track is dual-purpose in our pollify application.  It gives a class structure to our locally tracked queue in a room,
@@ -20,6 +21,7 @@ export class Track {
     artistName: string;
     popularity: number;
     duration_ms: number;
+    duration: string;
     type: string;
     rawTrackJson: string;
     uri: string;
@@ -46,6 +48,7 @@ export class Track {
         this.artistName = "";
         this.popularity = -1;
         this.duration_ms = -1;
+        this.duration = "";
         this.type = "";
         this.rawTrackJson = null;
         this.uri = "";
@@ -99,5 +102,9 @@ export class Track {
     getUri() {
         if (!this.uri) return "spotify:track:" + this.id;
         return this.uri;
+    }
+
+    setDuration(duration: number) {
+        this.duration = convertMilliToReadable(duration);
     }
 }

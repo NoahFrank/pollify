@@ -39,10 +39,8 @@ function buildTrackView(track: SpotifyApi.TrackObjectFull, includeAlbumImage = f
     manipulatedTrack.id = track.id;
     manipulatedTrack.name = track.name;
     manipulatedTrack.albumName = track.album.name;
-    const seconds = Number(track.duration_ms) / 1000;
-    const minutes = seconds / 60;
-    const secondsLeftOver = (seconds % 60).toFixed(0);
     manipulatedTrack.duration_ms = track.duration_ms;  // TODO: Convert this to human readable
+    manipulatedTrack.setDuration(manipulatedTrack.duration_ms);
     manipulatedTrack.artistName = "";
     for (let i = 0; i < track.artists.length; i++) {
         const artist = track.artists[i];

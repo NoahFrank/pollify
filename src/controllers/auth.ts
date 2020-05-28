@@ -238,6 +238,7 @@ const spotifyCallbackSuccess = async (tokenResponse: SpotifyTokenResponse, req: 
                     newTrack.artistName = track.artists[0].name;
                     newTrack.popularity = track.popularity;
                     newTrack.duration_ms = track.duration_ms;
+                    newTrack.setDuration(newTrack.duration_ms);
                     newTrack.uri = track.uri;
                     newTrack.track_number = track.track_number;
                     newTrack.available_markets = track.available_markets;
