@@ -111,11 +111,12 @@ export class Room {
         return null;
     }
 
-    addTrackToTrackList(track: Track) {
+    addTrackToTrackList(track: Track): boolean {
         // Make sure track is not already in trackList
-        if (this.findTrack(track.id)) return;
+        if (this.findTrack(track.id)) return false;
 
         this.trackList.push(track);
+        return true;
     }
 
     removeTrack(trackId: string, cache: any, callback: Function) {

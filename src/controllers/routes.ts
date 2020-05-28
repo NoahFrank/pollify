@@ -381,7 +381,12 @@ export const roomTrackAdd = async (req: Request, res: Response, next: NextFuncti
         }
 
         // 4. Store the populated newTrack Object locally in this room
-        room.addTrackToTrackList(newTrack);
+        const result = room.addTrackToTrackList(newTrack);
+        if (!result) {
+            // 4.a This track already exists in the playlist
+            logger.debug(`Track alreayd existed in playlist. Track=${newTrack.name} Room=${room.name}`);
+            return res.redirect(`/room/${room.name}`);
+        }
 
         // 5. Kinda Optional. Now we add new track to spotify playlist (only needs to be done for the next track in queue)
         room.spotify.addTracksToPlaylist(room.playlistId, [newTrack.uri])  // Has 3rd options parameter that allows "position"!
