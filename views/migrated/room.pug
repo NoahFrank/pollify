@@ -50,7 +50,7 @@ block roomContent
                                     form(id="#{track.id}-remove", method="POST", action="/room/" + roomName + "/remove/" + track.id)
                                         //- TODO: csrf
                                         input(type="hidden", name="trackId", value=track.id)
-                                        button(type="submit") ="remove"
+                                        button(type="submit")="remove"
                             else
                                 td
                                     if track.currentUserVotedToRemove
