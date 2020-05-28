@@ -17,7 +17,7 @@ export class User {
             this.roomHistory.push(currentRoom);  // TODO: Also store timestamp or other needed data?
     }
 
-    static createUserSession(req: Request, res: Response) {
+    static createUserSession(req: Request, res: Response): number {
         const userIP: string = req.connection.remoteAddress;
         const userIPHash: number = stringHash(userIP);
         logger.debug(`Setting user's public ip (${userIP}) converted to hashed string (${userIPHash})`);
@@ -25,5 +25,6 @@ export class User {
             maxAge: 900000,
             httpOnly: true
         });
+        return userIPHash;
     }
 }

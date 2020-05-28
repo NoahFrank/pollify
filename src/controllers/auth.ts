@@ -194,12 +194,11 @@ const spotifyCallbackSuccess = async (tokenResponse: SpotifyTokenResponse, req: 
             res.redirect("/");
         }
 
-        // TODO: Where can we get data to instantiate new Owner obj?
-        let pollifySession = "";
-        if ("cookies" in req) {
-            pollifySession = req.cookies.pollifySession;
+        // Attempt to find session and if it doesn't exist create one for this user
+        let pollifySession: string = req.cookies.pollifySession;
+        if (!pollifySession) {
+            pollifySession = User.createUserSession(req, res).toString();
         }
-        logger.debug(`Checking pollifySession: ${pollifySession}`);
         const newOwner = new Owner(pollifySession, body.id, body.display_name, body.email, tokenResponse.access_token, tokenResponse.refresh_token, tokenExpirationEpoch);
         const newRoom = new Room(newOwner);
 
