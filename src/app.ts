@@ -93,52 +93,31 @@ app.use(
 );
 
 /**
- * Primary app routes.
- */
-// app.get("/", homeController.index);
-// app.get("/login", userController.getLogin);
-// app.post("/login", userController.postLogin);
-// app.get("/logout", userController.logout);
-// app.get("/forgot", userController.getForgot);
-// app.post("/forgot", userController.postForgot);
-// app.get("/reset/:token", userController.getReset);
-// app.post("/reset/:token", userController.postReset);
-// app.get("/signup", userController.getSignup);
-// app.post("/signup", userController.postSignup);
-// app.get("/contact", contactController.getContact);
-// app.post("/contact", contactController.postContact);
-// app.get("/account", passportConfig.isAuthenticated, userController.getAccount);
-// app.post("/account/profile", passportConfig.isAuthenticated, userController.postUpdateProfile);
-// app.post("/account/password", passportConfig.isAuthenticated, userController.postUpdatePassword);
-// app.post("/account/delete", passportConfig.isAuthenticated, userController.postDeleteAccount);
-// app.get("/account/unlink/:provider", passportConfig.isAuthenticated, userController.getOauthUnlink);
-
-/**
- * API examples routes.
- */
-// app.get("/api", apiController.getApi);
-// app.get("/api/facebook", passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.getFacebook);
-
-/**
  * Spotify Authorization routes
  */
 app.get("/auth/spotify/login", authController.loginStartAuth);
 app.get("/auth/spotify/callback", authController.loginAuthCallback);
 
-
-/**
- * OAuth authentication routes. (Sign in)
- */
-// app.get("/auth/facebook", passport.authenticate("facebook", { scope: ["email", "public_profile"] }));
-// app.get("/auth/facebook/callback", passport.authenticate("facebook", { failureRedirect: "/login" }), (req, res) => {
-//     res.redirect(req.session.returnTo || "/");
-// });
-
 /**
  * Custom Pollify Routes!
  */
 app.get("/", routesController.home);
+app.post("/room/join", routesController.roomJoin);
 app.get("/room/:roomId", routesController.findRoom);
 app.post("/room/:roomId/skip", routesController.roomSkip);
+app.post("/room/:roomId/play", routesController.roomPlay);
+app.post("/room/:roomId/pause", routesController.roomPause);
+app.post("/room/:roomId/vote", routesController.roomVote);
+app.post("/room/:roomId/unvote", routesController.roomUnvote);
+app.post("/room/:roomId/skip/vote", routesController.roomSkipVote);
+app.post("/room/:roomId/skip/unvote", routesController.roomSkipUnvote);
+app.post("/room/:roomId/search", routesController.roomSearch);
+app.get("/room/:roomId/add/:trackId", routesController.roomTrackAdd);
+app.post("/room/:roomId/remove/:trackId", routesController.roomTrackRemove);
+app.post("/room/:roomId/remove/:trackId/vote", routesController.roomRemoveVote);
+app.post("/room/:roomId/remove/:trackId/unvote", routesController.roomRemoveUnvote);
+app.delete("/room/:roomId/delete", routesController.roomUserRemove);
+app.post("/room/:roomId/getArtistTopTracks/:artistId", routesController.roomGetTopSongsForArtist);
+// app.delete("/room/:roomId/close", routesController.roomClose);
 
 export default app;

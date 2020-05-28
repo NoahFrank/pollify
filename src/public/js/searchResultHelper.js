@@ -24,7 +24,7 @@ function displayArtistTopTracks(roomName, artistId) {
     $("#addTrackDataId").empty();
 
     $.ajax({
-        url: `/${roomName}/getArtistTopTracks/${artistId}`,
+        url: `/room/${roomName}/getArtistTopTracks/${artistId}`,
         method: "POST"
     }).done(function (data) {
         let finalGeneratedHtml = "";

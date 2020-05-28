@@ -4,7 +4,7 @@
 
 import { Room } from "../models/room";
 import { Track } from "../models/track";
-// import { Artist } from "../models/artist";
+import { Artist } from "../models/artist";
 import { User } from "../models/user";
 
 // // Setup logging
@@ -24,52 +24,52 @@ function noRoomPlaylistError(roomId: string, res: Response, next: NextFunction) 
     return next();
 }
 
-// function buildTrackView(track: SpotifyApi.TrackObjectFull, includeAlbumImage = false, includeFullTrack = false) {
-//     const manipulatedTrack = new Track();
+function buildTrackView(track: SpotifyApi.TrackObjectFull, includeAlbumImage = false, includeFullTrack = false) {
+    const manipulatedTrack = new Track();
 
-//     // Set optional fields if supplied
-//     if (includeFullTrack) {
-//         // put raw track to pass to other routes later
-//         manipulatedTrack.rawTrackJson = JSON.stringify(track);
-//     }
-//     if (includeAlbumImage) {
-//         manipulatedTrack.albumImage = track.album.images[2].url;
-//     }
+    // Set optional fields if supplied
+    if (includeFullTrack) {
+        // put raw track to pass to other routes later
+        manipulatedTrack.rawTrackJson = JSON.stringify(track);
+    }
+    if (includeAlbumImage) {
+        manipulatedTrack.albumImage = track.album.images[2].url;
+    }
 
-//     manipulatedTrack.id = track.id;
-//     manipulatedTrack.name = track.name;
-//     manipulatedTrack.albumName = track.album.name;
-//     const seconds = Number(track.duration_ms) / 1000;
-//     const minutes = seconds / 60;
-//     const secondsLeftOver = (seconds % 60).toFixed(0);
-//     manipulatedTrack.duration_ms = track.duration_ms;  // TODO: Convert this to human readable
-//     manipulatedTrack.artistName = "";
-//     for (let i = 0; i < track.artists.length; i++) {
-//         const artist = track.artists[i];
-//         manipulatedTrack.artistName += artist.name;
-//         manipulatedTrack.artistName += track.artists.length - 1 != i ? ", " : "";
-//     }
+    manipulatedTrack.id = track.id;
+    manipulatedTrack.name = track.name;
+    manipulatedTrack.albumName = track.album.name;
+    const seconds = Number(track.duration_ms) / 1000;
+    const minutes = seconds / 60;
+    const secondsLeftOver = (seconds % 60).toFixed(0);
+    manipulatedTrack.duration_ms = track.duration_ms;  // TODO: Convert this to human readable
+    manipulatedTrack.artistName = "";
+    for (let i = 0; i < track.artists.length; i++) {
+        const artist = track.artists[i];
+        manipulatedTrack.artistName += artist.name;
+        manipulatedTrack.artistName += track.artists.length - 1 != i ? ", " : "";
+    }
 
-//     // Need voted users for this track to render how many votes this track has!
-//     // manipulatedTrack.users = track.users;
-//     // copy over the skip and remove votes
-//     // manipulatedTrack.votedToSkipUsers = track.votedToSkipUsers;
-//     // manipulatedTrack.votedToRemoveUsers = track.votedToRemoveUsers;
+    // Need voted users for this track to render how many votes this track has!
+    // manipulatedTrack.users = track.users;
+    // copy over the skip and remove votes
+    // manipulatedTrack.votedToSkipUsers = track.votedToSkipUsers;
+    // manipulatedTrack.votedToRemoveUsers = track.votedToRemoveUsers;
 
-//     return manipulatedTrack;
-// }
+    return manipulatedTrack;
+}
 
-// function buildArtistView(artist: SpotifyApi.ArtistObjectFull) {
-//     const manipulatedArtist = new Artist();
+function buildArtistView(artist: SpotifyApi.ArtistObjectFull) {
+    const manipulatedArtist = new Artist();
 
-//     manipulatedArtist.id = artist.id;
-//     manipulatedArtist.name = artist.name;
-//     manipulatedArtist.popularity = artist.popularity;
-//     manipulatedArtist.genres = artist.genres;
-//     manipulatedArtist.images = artist.images;
+    manipulatedArtist.id = artist.id;
+    manipulatedArtist.name = artist.name;
+    manipulatedArtist.popularity = artist.popularity;
+    manipulatedArtist.genres = artist.genres;
+    manipulatedArtist.images = artist.images;
 
-//     return manipulatedArtist;
-// }
+    return manipulatedArtist;
+}
 
 export const home = (req: Request, res: Response) => {
     res.render("migrated/index", {
@@ -84,7 +84,7 @@ export const findRoom = async (req: Request, res: Response, next: NextFunction) 
 
     try {
         const room = await Room.get(roomId, cache);
-        const userSession = req.cookies.pollifySession;
+        const userSession: string = req.cookies.pollifySession;
         if (!userSession) {
             logger.debug(`*** Found user session ${userSession} was undefined so lets define it.`);
             User.createUserSession(req, res);
@@ -104,7 +104,7 @@ export const findRoom = async (req: Request, res: Response, next: NextFunction) 
             // Create a slimmed down version of Track for rendering view with buildTrackView
             const manipulatedTrack = Track.copy(track);
             // determine if the request user has voted to remove this track or not
-            manipulatedTrack.currentUserVotedToRemove = manipulatedTrack.votedToRemoveUsers.has(req.cookies.pollifySession);
+            manipulatedTrack.currentUserVotedToRemove = track.votedToRemoveUsers.has(userSession);
             trackViewList.push(manipulatedTrack);
         }
 
@@ -138,95 +138,95 @@ export const findRoom = async (req: Request, res: Response, next: NextFunction) 
     }
 };
 
-// router.post("/:roomId/vote", async (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     const songId = req.body.songId;
-//     const cache = req.app.get("cache");
-//     log.info(`Voting in ${roomId} for ${songId}`);
+export const roomVote = async (req: Request, res: Response) => {
+    const roomId = req.params.roomId;
+    const songId = req.body.songId;
+    const cache = req.app.get("cache");
+    logger.info(`Voting in ${roomId} for ${songId}`);
 
-//     try {
-//         const room = await Room.get(roomId, cache);
-//         const track = room.findTrack(songId);
-//         if (!track) {
-//             log.error(`TrackId=${track.id} doesn't exist`);
-//             res.sendStatus(404);
-//         }
-//         room.addTrackVote(req.cookies.pollifySession, track);
-//         await room.save(cache);
-//         res.redirect(`/${room.name}`);
-//     } catch (err) {
-//         res.sendStatus(404);
-//     }
-// });
+    try {
+        const room = await Room.get(roomId, cache);
+        const track = room.findTrack(songId);
+        if (!track) {
+            logger.error(`TrackId=${track.id} doesn't exist`);
+            res.sendStatus(404);
+        }
+        room.addTrackVote(req.cookies.pollifySession, track);
+        await room.save(cache);
+        res.redirect(`/room/${room.name}`);
+    } catch (err) {
+        res.sendStatus(404);
+    }
+};
 
-// router.post("/:roomId/unvote", async (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     const songId = req.body.songId;
-//     const cache = req.app.get("cache");
-//     log.info(`Unvoting in ${roomId} for ${songId}`);
+export const roomUnvote = async (req: Request, res: Response) => {
+    const roomId = req.params.roomId;
+    const songId = req.body.songId;
+    const cache = req.app.get("cache");
+    logger.info(`Unvoting in ${roomId} for ${songId}`);
 
-//     try {
-//         const room = await Room.get(roomId, cache);
-//         const track = room.findTrack(songId);
-//         if (!track) {
-//             log.error(`TrackId=${track.id} doesn't exist`);
-//             res.sendStatus(404);
-//         }
-//         room.removeTrackVote(req.cookies.pollifySession, track);
-//         await room.save(cache);
-//         res.redirect(`/${room.name}`);
-//     } catch (err) {
-//         res.sendStatus(404);
-//     }
-// });
+    try {
+        const room = await Room.get(roomId, cache);
+        const track = room.findTrack(songId);
+        if (!track) {
+            logger.error(`TrackId=${track.id} doesn't exist`);
+            res.sendStatus(404);
+        }
+        room.removeTrackVote(req.cookies.pollifySession, track);
+        await room.save(cache);
+        res.redirect(`/room/${room.name}`);
+    } catch (err) {
+        res.sendStatus(404);
+    }
+};
 
-// router.post("/:roomId/pause", async (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     const cache = req.app.get("cache");
-//     log.info(`Pausing playback in ${roomId}`);
+export const roomPause = async (req: Request, res: Response) => {
+    const roomId = req.params.roomId;
+    const cache = req.app.get("cache");
+    logger.info(`Pausing playback in ${roomId}`);
 
-//     try {
-//         const room = await Room.get(roomId, cache);
-//         if (!room.isOwner(req.cookies.pollifySession)) {
-//             return res.sendStatus(403);
-//         }
-//         room.spotify.pause()
-//             .then((result) => {  // Supports device_id flag
-//                 res.redirect(`/${roomId}`);
-//             })
-//             .catch((err) => {
-//                 log.error(err);
-//                 res.status(500).send("Server error: Failed to pause playback.");
-//             }
-//             );
-//     } catch (err) {
-//         res.sendStatus(404);
-//     }
-// });
+    try {
+        const room = await Room.get(roomId, cache);
+        if (!room.isOwner(req.cookies.pollifySession)) {
+            return res.sendStatus(403);
+        }
+        room.spotify.pause()
+            .then((result) => {  // Supports device_id flag
+                res.redirect(`/room/${roomId}`);
+            })
+            .catch((err) => {
+                logger.error(err);
+                res.status(500).send("Server error: Failed to pause playback.");
+            }
+            );
+    } catch (err) {
+        res.sendStatus(404);
+    }
+};
 
-// router.post("/:roomId/play", async (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     const cache = req.app.get("cache");
-//     log.info(`Playing/Resuming playback in ${roomId}`);
+export const roomPlay = async (req: Request, res: Response, next: NextFunction) => {
+    const roomId = req.params.roomId;
+    const cache = req.app.get("cache");
+    logger.info(`Playing/Resuming playback in ${roomId}`);
 
-//     try {
-//         const room = await Room.get(roomId, cache);
-//         if (!room.isOwner(req.cookies.pollifySession)) {
-//             return res.sendStatus(403);
-//         }
-//         room.spotify.play()
-//             .then((result) => {  // Object can be passed to play() to play a specific song, e.g. .play({device_id: wa2324ge5in3E8h, uris: []}
-//                 res.redirect(`/${roomId}`);
-//             })
-//             .catch((err) => {
-//                 log.error(err);
-//                 res.status(500).send("Server error: Failed to play playback.");
-//             }
-//             );
-//     } catch (err) {
-//         res.sendStatus(404);
-//     }
-// });
+    try {
+        const room = await Room.get(roomId, cache);
+        if (!room.isOwner(req.cookies.pollifySession)) {
+            return res.sendStatus(403);
+        }
+        room.spotify.play()
+            .then((result) => {  // Object can be passed to play() to play a specific song, e.g. .play({device_id: wa2324ge5in3E8h, uris: []}
+                res.redirect(`/room/${roomId}`);
+            })
+            .catch((err) => {
+                logger.error(err);
+                res.status(500).send("Server error: Failed to play playback.");
+            }
+            );
+    } catch (err) {
+        res.sendStatus(404);
+    }
+};
 
 export const roomSkip = async (req: Request, res: Response, next: NextFunction) => {  // TODO: Should Skip/Back/Play be GET or POST? Owner override or vote-based events?
     // Need some security check that this was actually backed by vote
@@ -299,300 +299,296 @@ export const roomSkip = async (req: Request, res: Response, next: NextFunction) 
 //     }
 // });
 
-// router.post("/:roomId/skip/vote", async (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     if (roomId === undefined) {
-//         log.error(`Connection to ${roomId} failed`);
-//         res.sendStatus(400).send("Failed to get room ID");
-//         return next();
-//     }
-//     const cache = req.app.get("cache");
+export const roomSkipVote = async (req: Request, res: Response, next: NextFunction) => {
+    const roomId = req.params.roomId;
+    if (roomId === undefined) {
+        logger.error(`Connection to ${roomId} failed`);
+        res.sendStatus(400).send("Failed to get room ID");
+        return next();
+    }
+    const cache = req.app.get("cache");
 
-//     try {
-//         const room = await Room.get(roomId, cache);
-//         room.voteToSkipCurrentSong(req.cookies.pollifySession, cache, (err, result) => {
-//             if (err) {
-//                 log.error(`Error returned from vote to skip current song. error=${err}`);
-//                 return res.sendStatus(500);
-//             }
-//             res.redirect(`/${roomId}`);
-//         });
-//     } catch (err) {
-//         res.sendStatus(404);
-//     }
-// });
+    try {
+        const room = await Room.get(roomId, cache);
+        const result = await room.voteToSkipCurrentSong(req.cookies.pollifySession, cache);
+        if (!result) {
+            return res.sendStatus(500);
+        }
+        res.redirect(`/room/${roomId}`);
+    } catch (err) {
+        res.sendStatus(404);
+    }
+};
 
-// router.post("/:roomId/skip/unvote", async (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     if (roomId === undefined) {
-//         log.error(`Connection to ${roomId} failed`);
-//         res.sendStatus(400).send("Failed to get room ID");
-//         return next();
-//     }
-//     const cache = req.app.get("cache");
+export const roomSkipUnvote = async (req: Request, res: Response, next: NextFunction) => {
+    const roomId = req.params.roomId;
+    if (roomId === undefined) {
+        logger.error(`Connection to ${roomId} failed`);
+        res.sendStatus(400).send("Failed to get room ID");
+        return next();
+    }
+    const cache = req.app.get("cache");
 
-//     try {
-//         const room = await Room.get(roomId, cache);
-//         room.unvoteToSkipCurrentSong(req.cookies.pollifySession, cache, (err, result) => {
-//             if (err) {
-//                 log.error(`Error returned from vote to skip current song. error=${err}`);
-//                 return res.sendStatus(500).send("Failed to unvote to skip Track in queue for your Room");
-//             }
-//             res.redirect(`/${roomId}`);
-//         });
-//     } catch (err) {
-//         res.sendStatus(404);
-//     }
-// });
+    try {
+        const room = await Room.get(roomId, cache);
+        const result = await room.unvoteToSkipCurrentSong(req.cookies.pollifySession, cache);
+        if (!result) {
+            return res.sendStatus(500).send("Failed to unvote to skip Track in queue for your Room");
+        }
+        logger.debug(`Successfully unvoted skipped to next track for Room ${room.name}`);
+        res.redirect(`/room/${roomId}`);
+    } catch (err) {
+        res.sendStatus(404);
+    }
+};
 
-// router.post("/join", (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.body.roomId;
-//     const cache = req.app.get("cache");
+export const roomJoin = (req: Request, res: Response, next: NextFunction) => {
+    const roomId = req.body.roomId;
+    const cache = req.app.get("cache");
 
-//     if (roomId === undefined) {
-//         log.error(`Connection to ${roomId} failed`);
-//         res.sendStatus(400);
-//         return next();
-//     }
+    if (roomId === undefined) {
+        logger.error(`Connection to ${roomId} failed`);
+        res.sendStatus(400);
+        return next();
+    }
 
-//     cache.getTtl(roomId, (ttl) => {
-//         if (ttl === undefined) {  // Undefined means key does not exist
-//             log.error(`Attempted to join ${roomId} but room doesn't exist.`);
-//             res.sendStatus(404);
-//         } else {  // 0 or timestamp of how long key-value will be in cache
-//             // save this user to the room's internal user list
-//             res.redirect(`/${roomId}`);
-//         }
-//     });
-// });
+    const ttl = cache.getTtl(roomId);
+    if (ttl === undefined) {  // Undefined means key does not exist
+        logger.error(`Attempted to join ${roomId} but room doesn't exist.`);
+        res.sendStatus(404);
+    } else {  // 0 or timestamp of how long key-value will be in cache
+        // save this user to the room's internal user list
+        res.redirect(`/room/${roomId}`);
+    }
+};
 
-// router.get("/:roomId/add/:trackId", async (req: Request, res: Response, next: NextFunction) => {  // TODO: Change back to POST
-//     const roomId = req.params.roomId;
-//     const trackId = req.params.trackId;
-//     if (roomId === undefined || trackId === undefined) {
-//         log.error(`Connection to ${roomId} failed`);
-//         res.sendStatus(400).send("Failed to get room ID or track ID for adding track");
-//         return next();
-//     }
+export const roomTrackAdd = async (req: Request, res: Response, next: NextFunction) => {  // TODO: Change back to POST
+    const roomId = req.params.roomId;
+    const trackId = req.params.trackId;
+    if (roomId === undefined || trackId === undefined) {
+        logger.error(`Connection to ${roomId} failed`);
+        res.sendStatus(400).send("Failed to get room ID or track ID for adding track");
+        return next();
+    }
 
-//     const cache = req.app.get("cache");
-//     try {
-//         // 1. Get room and spotify instance for this room
-//         const room = await Room.get(roomId, cache);
-//         // 2. Construct new Track object with suggestor and populate Track data with getTrackById
-//         // TODO: Determine suggestor's name and attach it to Track by passing to constructor
-//         const newTrack = await new Track(new User("Bob")).getTrackById(room.spotify, trackId); // Wait for track to populate data from spotify api with getTrackById
-//         // 3. Done populating Track!  Now make sure to actually add track to room playlist and redirect back to room after successful queue add
-//         if (!room.isPlaylistCreated()) {  // Sanity check to ensure the Room actually created a Playlist
-//             return noRoomPlaylistError(roomId, res, next);
-//         }
+    const cache = req.app.get("cache");
+    try {
+        // 1. Get room and spotify instance for this room
+        const room = await Room.get(roomId, cache);
+        // 2. Construct new Track object with suggestor and populate Track data with getTrackById
+        // TODO: Determine suggestor's name and attach it to Track by passing to constructor
+        const newTrack = await new Track(new User("Bob")).getTrackById(room.spotify, trackId); // Wait for track to populate data from spotify api with getTrackById
+        // 3. Done populating Track!  Now make sure to actually add track to room playlist and redirect back to room after successful queue add
+        if (!room.isPlaylistCreated()) {  // Sanity check to ensure the Room actually created a Playlist
+            return noRoomPlaylistError(roomId, res, next);
+        }
 
-//         // 4. Store the populated newTrack Object locally in this room
-//         room.addTrackToTrackList(newTrack);
+        // 4. Store the populated newTrack Object locally in this room
+        room.addTrackToTrackList(newTrack);
 
-//         // 5. Kinda Optional. Now we add new track to spotify playlist (only needs to be done for the next track in queue)
-//         room.spotify.addTracksToPlaylist(room.playlistId, [newTrack.uri])  // Has 3rd options parameter that allows "position"!
-//             .then(() => {
-//                 // 4. Successful finish! We added the track to the playlist!
-//                 log.debug(`Added track ${newTrack.name} to queue for room ${room.name} from suggestor ${newTrack.suggestor}`);
-//             })
-//             .catch((err) => {
-//                 // TODO: Notify user we failed to add track to spotify playlist "queue"
-//                 log.error(`Failed to add track ${newTrack.uri} to playlist for room ${room.name}, likely a spotify API error! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
-//             }
-//             );
+        // 5. Kinda Optional. Now we add new track to spotify playlist (only needs to be done for the next track in queue)
+        room.spotify.addTracksToPlaylist(room.playlistId, [newTrack.uri])  // Has 3rd options parameter that allows "position"!
+            .then(() => {
+                // 4. Successful finish! We added the track to the playlist!
+                logger.debug(`Added track ${newTrack.name} to queue for room ${room.name} from suggestor ${newTrack.suggestor}`);
+            })
+            .catch((err) => {
+                // TODO: Notify user we failed to add track to spotify playlist "queue"
+                logger.error(`Failed to add track ${newTrack.uri} to playlist for room ${room.name}, likely a spotify API error! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
+            }
+            );
 
-//         // 6. Save our room after adding to track list
-//         await room.save(cache);
-//         // 7. Return user to room home
-//         res.redirect(`/${room.name}`);
-//     } catch (err) {
-//         // Could be Room.get or getTrackById error
-//         log.error("Failed to add track to queue!");
-//         res.status(500).send("Failed to add Track to queue for your Room");
-//     }
-// });
+        // 6. Save our room after adding to track list
+        await room.save(cache);
+        // 7. Return user to room home
+        res.redirect(`/room/${room.name}`);
+    } catch (err) {
+        // Could be Room.get or getTrackById error
+        logger.error("Failed to add track to queue!");
+        res.status(500).send("Failed to add Track to queue for your Room");
+    }
+};
 
-// router.post("/:roomId/search/", async (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     const searchQuery = req.body.searchQuery;
-//     const searchType = req.body.searchType.toLowerCase();
+export const roomSearch = async (req: Request, res: Response) => {
+    const roomId = req.params.roomId;
+    const searchQuery = req.body.searchQuery;
+    const searchType = req.body.searchType.toLowerCase();
 
-//     try {
-//         // 1. Get room
-//         const room = await Room.get(roomId, req.app.get("cache"));
-//         log.info(`Found Room for search=${room.name}`);
+    try {
+        // 1. Get room
+        const room = await Room.get(roomId, req.app.get("cache"));
+        logger.info(`Found Room for search=${room.name}`);
 
-//         // 2. Query spotify for results
-//         const data = await room.spotify.search(searchQuery, [searchType]);
+        // 2. Query spotify for results
+        const data = await room.spotify.search(searchQuery, [searchType]);
 
-//         const searchOutput = [];
+        const searchOutput = [];
 
-//         // Detect searchType and handle based on case
-//         if (searchType == "track") {
-//             const tracks: SpotifyApi.TrackObjectFull[] = data.tracks.items;
+        // Detect searchType and handle based on case
+        if (searchType == "track") {
+            const tracks = data.body.tracks.items;
 
-//             // 3.a Manipulate response to an output we are going to display
-//             for (const track of tracks) {
-//                 const manipulatedTrack = buildTrackView(track, true, true);
-//                 searchOutput.push(manipulatedTrack);
-//             }
-//         } else if (searchType == "artist") {
-//             const artists: SpotifyApi.ArtistObjectFull[] = data.body.artists.items;
+            // 3.a Manipulate response to an output we are going to display
+            for (const track of tracks) {
+                const manipulatedTrack = buildTrackView(track, true, true);
+                searchOutput.push(manipulatedTrack);
+            }
+        } else if (searchType == "artist") {
+            const artists: SpotifyApi.ArtistObjectFull[] = data.body.artists.items;
 
-//             // 3.b Manipulate response to an output we are going to display
-//             for (const artist of artists) {
-//                 const manipulatedArtist = buildArtistView(artist);
-//                 searchOutput.push(manipulatedArtist);
-//             }
-//         } else {
-//             log.error(`Unknown searchType=${searchType}, what do we do with search result data!!`);
-//         }
+            // 3.b Manipulate response to an output we are going to display
+            for (const artist of artists) {
+                const manipulatedArtist = buildArtistView(artist);
+                searchOutput.push(manipulatedArtist);
+            }
+        } else {
+            logger.error(`Unknown searchType=${searchType}, what do we do with search result data!!`);
+        }
 
-//         // 4. Render search results
-//         res.render("searchResults", {
-//             searchQuery: searchQuery,
-//             searchType: searchType,
-//             results: searchOutput,
-//             room: room,
-//             roomName: room.name,
-//             roomUsers: room.getSetAsArray("users")
-//         });
-//     } catch (err) {
-//         // Could be Room.get or spotify.search error
-//         log.error(`Failed to search for ${searchQuery}!`);
-//         res.status(500).send("Failed to add Track to queue for your Room");
-//     }
-// });
+        // 4. Render search results
+        res.render("migrated/searchResults", {
+            searchQuery: searchQuery,
+            searchType: searchType,
+            results: searchOutput,
+            room: room,
+            roomName: room.name,
+            roomUsers: room.getSetAsArray("users")
+        });
+    } catch (err) {
+        // Could be Room.get or spotify.search error
+        logger.error(`Failed to search for ${searchQuery}!`);
+        res.status(500).send("Failed to add Track to queue for your Room");
+    }
+};
 
-// router.post("/:roomId/remove/:trackId", (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     const trackId = req.params.trackId;
-//     const cache = req.app.get("cache");
+export const roomTrackRemove = async (req: Request, res: Response) => {
+    const roomId = req.params.roomId;
+    const trackId = req.params.trackId;
+    const cache = req.app.get("cache");
 
-//     Room.get(roomId, cache)
-//         .then((room) => {
-//             if (!room.isOwner(req.cookies.pollifySession)) {
-//                 return res.sendStatus(403);
-//             }
-//             room.removeTrack(trackId, cache, function (err, success) {
-//                 if (err != null) {
-//                     log.error(`Error saving voted to removed track to room ${roomId}. err=${err} and message=${err.message}`);
-//                     return res.sendStatus(500);
-//                 }
-//                 res.redirect(`/${room.name}`);
-//             });
-//         })
-//         .catch((err) => {
-//             log.error(`${roomId} doesn't exist`);
-//             res.sendStatus(404);
-//         }
-//         );
-// });
+    Room.get(roomId, cache)
+        .then((room) => {
+            if (!room.isOwner(req.cookies.pollifySession)) {
+                return res.sendStatus(403);
+            }
+            room.removeTrack(trackId, cache, function (err: any, success: boolean) {
+                if (err != null) {
+                    logger.error(`Error saving voted to removed track to room ${roomId}. err=${err} and message=${err.message}`);
+                    return res.sendStatus(500);
+                }
+                res.redirect(`/room/${room.name}`);
+            });
+        })
+        .catch((err) => {
+            logger.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
+        }
+        );
+};
 
-// router.post("/:roomId/remove/:trackId/vote", async (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     const trackId = req.body.trackId;
-//     const cache = req.app.get("cache");
-//     log.info(`Voting in ${roomId} for ${trackId} to remove`);
+export const roomRemoveVote = async (req: Request, res: Response) => {
+    const roomId = req.params.roomId;
+    const trackId = req.body.trackId;
+    const cache = req.app.get("cache");
+    logger.info(`Voting in ${roomId} for ${trackId} to remove`);
 
-//     Room.get(roomId, cache)
-//         .then((room) => {
-//             const track = room.findTrack(trackId);
-//             if (!track) {
-//                 log.error(`TrackId=${track.id} doesn't exist`);
-//                 res.sendStatus(404);
-//             }
-//             room.voteToRemoveTrack(req.cookies.pollifySession, track, cache, function (err, result) {
-//                 if (err) {
-//                     log.error(`Error saving voted to removed track to room ${roomId}. err=${err} and message=${err.message}`);
-//                     return res.sendStatus(500);
-//                 }
-//                 res.redirect(`/${room.name}`);
-//             });
-//         })
-//         .catch((err) => {
-//             log.error(`${roomId} doesn't exist`);
-//             res.sendStatus(404);
-//         }
-//         );
-// });
+    Room.get(roomId, cache)
+        .then((room) => {
+            const track = room.findTrack(trackId);
+            if (!track) {
+                logger.error(`TrackId=${track.id} doesn't exist`);
+                res.sendStatus(404);
+            }
+            room.voteToRemoveTrack(req.cookies.pollifySession, track, cache, function (err: any, result: boolean) {
+                if (err) {
+                    logger.error(`Error saving voted to removed track to room ${roomId}. err=${err} and message=${err.message}`);
+                    return res.sendStatus(500);
+                }
+                res.redirect(`/room/${room.name}`);
+            });
+        })
+        .catch((err) => {
+            logger.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
+        }
+        );
+};
 
-// router.post("/:roomId/remove/:trackId/unvote", (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     const trackId = req.body.trackId;
-//     const cache = req.app.get("cache");
-//     log.info(`Voting in ${roomId} for ${trackId} to remove`);
+export const roomRemoveUnvote = (req: Request, res: Response, next: NextFunction) => {
+    const roomId = req.params.roomId;
+    const trackId = req.body.trackId;
+    const cache = req.app.get("cache");
+    logger.info(`Voting in ${roomId} for ${trackId} to remove`);
 
-//     Room.get(roomId, cache)
-//         .then((room) => {
-//             const track = room.findTrack(trackId);
-//             if (!track) {
-//                 log.error(`TrackId=${track.id} doesn't exist`);
-//                 res.sendStatus(404);
-//             }
-//             room.unvoteToRemoveTrack(req.cookies.pollifySession, track, cache, function (err, success) {
-//                 if (err != null) {
-//                     log.error(`Error saving voted to removed track to room ${roomId}. err=${err} and message=${err.message}`);
-//                     return res.sendStatus(500);
-//                 }
-//                 res.redirect(`/${room.name}`);
-//             });
-//         })
-//         .catch((err) => {
-//             log.error(`${roomId} doesn't exist`);
-//             res.sendStatus(404);
-//         }
-//         );
-// });
+    Room.get(roomId, cache)
+        .then((room) => {
+            const track = room.findTrack(trackId);
+            if (!track) {
+                logger.error(`TrackId=${track.id} doesn't exist`);
+                res.sendStatus(404);
+            }
+            room.unvoteToRemoveTrack(req.cookies.pollifySession, track, cache, function (err: any, success: boolean) {
+                if (err != null) {
+                    logger.error(`Error saving voted to removed track to room ${roomId}. err=${err} and message=${err.message}`);
+                    return res.sendStatus(500);
+                }
+                res.redirect(`/${room.name}`);
+            });
+        })
+        .catch((err) => {
+            logger.error(`${roomId} doesn't exist`);
+            res.sendStatus(404);
+        }
+        );
+};
 
 // // TODO: Make powerhour
-// router.post("/:roomId/powerhour", (req: Request, res: Response, next: NextFunction) => {
-//     res.render("index", { title: "Express" });
-// });
+const powerHour = (req: Request, res: Response) => {
+    res.render("index", { title: "Express" });
+};
 
-// router.post("/:roomId/getArtistTopTracks/:artistId", async (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     const artistId = req.params.artistId;
+export const roomGetTopSongsForArtist = async (req: Request, res: Response, next: NextFunction) => {
+    const roomId = req.params.roomId;
+    const artistId = req.params.artistId;
 
-//     try {
-//         // 1. Get room
-//         const room = await Room.get(roomId, req.app.get("cache"));
-//         log.info(`Found Room for search=${room.name}`);
+    try {
+        // 1. Get room
+        const room = await Room.get(roomId, req.app.get("cache"));
+        logger.info(`Found Room for search=${room.name}`);
 
-//         // 2. Query spotify for results
-//         // TODO: Localize to country's top tracks
-//         const data: SpotifyApi.ArtistsTopTracksResponse = await room.spotify.getArtistTopTracks(artistId, "US");
+        // 2. Query spotify for results
+        // TODO: Localize to country's top tracks
+        const data = await room.spotify.getArtistTopTracks(artistId, "US");
+        const tracks = data.body.tracks;
 
-//         const searchOutput = [];
-//         // 3. Build view version of each Track with buildTrackView
-//         for (const track of data.tracks) {
-//             const manipulatedTrack = buildTrackView(track, true, true);
-//             searchOutput.push(manipulatedTrack);
-//         }
+        const searchOutput = [];
+        // 3. Build view version of each Track with buildTrackView
+        for (const track of tracks) {
+            const manipulatedTrack = buildTrackView(track, true, true);
+            searchOutput.push(manipulatedTrack);
+        }
 
-//         // 4. Render search results in JSON
-//         res.json({ topTrackData: searchOutput });
-//     } catch (err) {
-//         // Could be Room.get or spotify.search error
-//         log.error(`Failed to get top tracks for artist id=${artistId}!`);
-//         res.status(500).send("Failed to search for top tracks for artist");
-//     }
-// });
+        // 4. Render search results in JSON
+        res.json({ topTrackData: searchOutput });
+    } catch (err) {
+        // Could be Room.get or spotify.search error
+        logger.error(`Failed to get top tracks for artist id=${artistId}!`);
+        res.status(500).send("Failed to search for top tracks for artist");
+    }
+};
 
-// router.delete("/:roomId/close", (req: Request, res: Response, next: NextFunction) => {
-//     const roomId = req.params.roomId;
-//     if (req.cookies.pollifySession) {
-//         const cache = req.app.get("cache");
-//         Room.get(roomId, cache)
-//             .then((room) => {
-//                 room.users.delete(req.cookies.pollifySession);
-//                 room.save(cache);
-//                 res.sendStatus(204);
-//             })
-//             .catch((err) => {
-//                 res.sendStatus(404);
-//             }
-//             );
-//     }
-// });
+export const roomUserRemove = (req: Request, res: Response) => {
+    const roomId = req.params.roomId;
+    if (req.cookies.pollifySession) {
+        const cache = req.app.get("cache");
+        Room.get(roomId, cache)
+            .then((room) => {
+                room.users.delete(req.cookies.pollifySession);
+                room.save(cache);
+                res.sendStatus(204);
+            })
+            .catch((err) => {
+                res.sendStatus(404);
+            });
+    }
+};

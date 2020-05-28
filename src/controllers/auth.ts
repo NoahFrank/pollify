@@ -229,7 +229,7 @@ const spotifyCallbackSuccess = async (tokenResponse: SpotifyTokenResponse, req: 
                 // Process each track into room's trackList
                 for (const outerTrackData of playlistTrackData.items) {
                     const track = outerTrackData.track;
-                    const newTrack = new Track(new User("Bob"));  // TODO: Suggestor storing in db, then we can know who suggested it in the past
+                    const newTrack = new Track();  // TODO: Suggestor storing in db, then we can know who suggested it in the past
                     newTrack.id = track.id;
                     newTrack.name = track.name;
                     newTrack.album = track.album;
@@ -238,12 +238,10 @@ const spotifyCallbackSuccess = async (tokenResponse: SpotifyTokenResponse, req: 
                     newTrack.artistName = track.artists[0].name;
                     newTrack.popularity = track.popularity;
                     newTrack.duration_ms = track.duration_ms;
-
                     newTrack.uri = track.uri;
                     newTrack.track_number = track.track_number;
                     newTrack.available_markets = track.available_markets;
                     newTrack.explicit = track.explicit;
-
                     newRoom.addTrackToTrackList(newTrack);
                 }
 

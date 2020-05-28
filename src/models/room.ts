@@ -20,7 +20,7 @@ export class Room {
     playlistId: string;
     // array of track objects that reflects the current top voted songs
     trackList: Array<Track>;
-    users: Set<User>;
+    users: Set<string>;
     currentPlaybackState: SpotifyApi.PlaybackObject;
     votesToSkipCurrentSong: Set<number>;
     // Also create a dedicated instance of SpotifyWebApi to make ALL requests for this Room using the given Owner authorized credentials
@@ -93,7 +93,7 @@ export class Room {
                 this.owner.refreshToken = data.body.access_token;
 
                 logger.info(
-                    `Refreshed token for room owner's profile_id=${this.owner.id}. 
+                    `Refreshed token for room owner's profile_id=${this.owner.id}.
                         It now expires at ${new Date(tokenExpirationEpoch)}!`
                 );
             } catch (err) {
@@ -281,9 +281,10 @@ export class Room {
         }
     }
 
-    async voteToSkipCurrentSong(sessionId: number, cache: any, callback: Function) {
+    async voteToSkipCurrentSong(sessionId: number, cache: any) {
         if (this.votesToSkipCurrentSong.has(sessionId)) {
-            return callback("User is already voting for current song", false);
+            logger.info("User is already voting for current song");
+            return false;
         }
         this.votesToSkipCurrentSong.add(sessionId);
         // This if condition is the skip vote threshold ALGORITHM
@@ -297,44 +298,44 @@ export class Room {
                 thisRoom.save(cache)
                     .then(() => {
                         logger.debug("Successfully reset rooms votes to skip current track");
-                        return callback(null, true);
+                        return true;
                     })
                     .catch((err) => {
                         logger.error(`Failed to save reset votes to skip current track. error=${err} and message=${err.message} and stacktrace=${err.stack}`);
-                        return callback(err, null);
+                        return false;
                     }
                     );
             } catch (err) {
                 logger.error(`Failed to perform a community skip! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
-                return callback(err, null);
+                return false;
             }
         } else {  // Skip vote threshold not met! Just save this room
             this.save(cache)
                 .then(() => {
                     logger.debug("Successfully saved rooms votes to skip current track");
-                    return callback(null, true);
+                    return true;
                 })
                 .catch((err) => {
                     logger.error(`Failed to save votes to skip current track. error=${err} and message=${err.message} and stacktrace=${err.stack}`);
-                    return callback(err, null);
+                    return false;
                 }
                 );
         }
     }
 
-    unvoteToSkipCurrentSong(sessionId: number, cache: any, callback: Function) {
+    async unvoteToSkipCurrentSong(sessionId: number, cache: any) {
         if (!this.votesToSkipCurrentSong.has(sessionId)) {
-            return callback("User is already not voting for current song", false);
+            logger.info("User is already not voting for current song");
+            return false;
         }
         this.votesToSkipCurrentSong.delete(sessionId);
         this.save(cache)
             .then(() => {
-                logger.debug(`Successfully unvoted skipped to next track for Room ${this.name}`);
-                return callback(null, true);
+                return true;
             })
             .catch((err) => {
                 logger.error(`Failed to unvote skip track in queue! error=${err} and message=${err.message} and stacktrace=${err.stack}`);
-                return callback(err, null);
+                return false;
             }
             );
     }

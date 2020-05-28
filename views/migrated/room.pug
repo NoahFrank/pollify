@@ -26,13 +26,13 @@ block roomContent
                         tr
                             td= track.position
                             td
-                                form(id=track.id + "-vote", method="POST", action="/" + roomName + "/vote")
+                                form(id=track.id + "-vote", method="POST", action="/room/" + roomName + "/vote")
                                     //- TODO: csrf
                                     input(type="hidden", name="songId", value=track.id)
                                     button(type="submit")
                                         ="+"
                             td
-                                form(id=track.id + "-unvote", method="POST", action="/" + roomName + "/unvote")
+                                form(id=track.id + "-unvote", method="POST", action="/room/" + roomName + "/unvote")
                                     //- TODO: csrf
                                     input(type="hidden", name="songId", value=track.id)
                                     button(type="submit")
@@ -47,7 +47,7 @@ block roomContent
                             td= track.votedToRemoveUsers.size
                             if isOwner
                                 td
-                                    form(id="#{track.id}-remove", method="POST", action="/" + roomName + "/remove/" + track.id + "/")
+                                    form(id="#{track.id}-remove", method="POST", action="/room/" + roomName + "/remove/" + track.id)
                                         //- TODO: csrf
                                         input(type="hidden", name="trackId", value=track.id)
                                         button(type="submit") ="remove"
@@ -70,6 +70,6 @@ block roomContent
         window.addEventListener("beforeunload", function (e) {
             $.ajax({
                 method: "DELETE",
-                url: "#{roomName}" + "/close"
+                url: "/room/{roomName}" + "/close"
             });
         });

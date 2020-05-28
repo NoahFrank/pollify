@@ -34,11 +34,11 @@ block content
                         if isOwner
                             td
                                 if roomCurrentPlaybackState.is_playing
-                                    form(id="pause", method="POST", action="/" + roomName + "/pause")
+                                    form(id="pause", method="POST", action="/room/" + roomName + "/pause")
                                         //- TODO: csrf
                                         button(type="submit")= "pause"
                                 else
-                                    form(id="play", method="POST", action="/" + roomName + "/play")
+                                    form(id="play", method="POST", action="/room/" + roomName + "/play")
                                         //- TODO: csrf
                                         button(type="submit")= "play"
                         td
@@ -49,10 +49,10 @@ block content
                                 - buttonText = "skip"
                             else
                                 if userVotedToSkipCurrentSong
-                                    - action = "/" + roomName + "/skip/unvote";
+                                    - action = "/room/" + roomName + "/skip/unvote";
                                     - buttonText = "unvote to skip";
                                 else
-                                    - action = "/" + roomName + "/skip/vote";
+                                    - action = "/room/" + roomName + "/skip/vote";
                                     - buttonText = "vote to skip";
                             form(id="skip", method="POST", action=action)
                                 //- TODO: csrf
@@ -67,7 +67,7 @@ block content
     else
         p No currently playing song
 
-    form(name="spotifySearch", method="post", action="/" + roomName + "/search")
+    form(name="spotifySearch", method="post", action="/room/" + roomName + "/search")
         .field.has-addons
             .control
                 input(type="text", name="searchQuery").input.is-info.is-rounded

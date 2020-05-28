@@ -7,13 +7,13 @@ import { Request, Response } from "express";
 
 export class User {
     username: string;
-    roomHistory: Array<string>;
+    roomHistory: Array<Room>;
 
-    constructor(username: string, currentRoom?: string) {
-        this.username = username;
+    constructor(username?: string, currentRoom?: Room) {
+        this.username = username || "";
         this.roomHistory = [];
 
-        if (currentRoom && currentRoom.length > 0)  // If user has currentRoom passed into constructor then add to roomHistory
+        if (currentRoom)  // If user has currentRoom passed into constructor then add to roomHistory
             this.roomHistory.push(currentRoom);  // TODO: Also store timestamp or other needed data?
     }
 

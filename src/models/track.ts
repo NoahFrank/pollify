@@ -38,7 +38,7 @@ export class Track {
     constructor(suggestor?: User) {
         this.votedToSkipUsers = new Set();  // This is a set of user session key strings
         this.votedToRemoveUsers = new Set(); // This is a set of user session key strings
-        this.suggestor = suggestor;
+        this.suggestor = suggestor || new User();
         this.id = "";
         this.name = "";
         this.albumName = "";
@@ -59,11 +59,10 @@ export class Track {
     }
 
     static copy(track: Track): Track {
-        const newTrack = new Track();
-        newTrack.users = track.users;
-        newTrack.votedToSkipUsers = track.votedToSkipUsers;
-        newTrack.votedToRemoveUsers = track.votedToRemoveUsers;
-        return newTrack;
+        const deepCopyTrack: Track = (JSON.parse(JSON.stringify(track)));
+        deepCopyTrack.votedToSkipUsers = new Set(track.votedToSkipUsers);
+        deepCopyTrack.votedToRemoveUsers = new Set(track.votedToRemoveUsers);
+        return deepCopyTrack;
     }
 
     getTrackById(spotify: SpotifyWebApi, trackId: string): Promise<Track> {

@@ -23,7 +23,7 @@ block roomContent
                 each track in results
                     tr
                         td
-                            a(href="/" + room.name + "/add/" + track.id) +
+                            a(href="/room/" + room.name + "/add/" + track.id) +
                         td
                             img(src=track.albumImage, height=64, width=64)
                         td= track.name
