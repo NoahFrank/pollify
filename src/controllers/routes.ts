@@ -80,7 +80,6 @@ export const home = (req: Request, res: Response) => {
 export const findRoom = async (req: Request, res: Response, next: NextFunction) => {
     const roomId = req.params.roomId;
     const cache = req.app.get("cache");
-    const includeAlbumImage = true;
 
     try {
         const room = await Room.get(roomId, cache);
@@ -514,7 +513,7 @@ export const roomRemoveVote = async (req: Request, res: Response) => {
         );
 };
 
-export const roomRemoveUnvote = (req: Request, res: Response, next: NextFunction) => {
+export const roomRemoveUnvote = (req: Request, res: Response) => {
     const roomId = req.params.roomId;
     const trackId = req.body.trackId;
     const cache = req.app.get("cache");
@@ -547,7 +546,7 @@ const powerHour = (req: Request, res: Response) => {
     res.render("index", { title: "Express" });
 };
 
-export const roomGetTopSongsForArtist = async (req: Request, res: Response, next: NextFunction) => {
+export const roomGetTopSongsForArtist = async (req: Request, res: Response) => {
     const roomId = req.params.roomId;
     const artistId = req.params.artistId;
 
