@@ -1,88 +1,91 @@
 extends layout
 
 block content
-    h1.title Welcome to #{roomName}
-    p.subtitle Please queue a song!
 
-    if roomUsers != undefined && roomUsers.length > 0
-        h2.title.is-size-4 Users in room:
-            .content
-                ul
-                    each user in roomUsers
-                        li=user
+    div.level
+        div.level-left
+            div.content
+                h1.title.is-1 Welcome to #{roomName}
+                p.subtitle Queue a song or vote on what you want to hear next!
 
-    if roomCurrentPlaybackState
-        p
-            if isOwner
-                p.subtitle Room Controls:
-            else
-                p.subtitle Vote Room Controls
-            table.table
-                thead
-                    tr
-                        if isOwner
-                            th Play
-                        th Skip
-                        th Skip Votes
-                        th Album Cover
-                        th Song Name
-                        th Album
-                        th Artist
-                        th Progress
-                tbody
-                    tr
-                        if isOwner
-                            td
-                                if roomCurrentPlaybackState.is_playing
-                                    form(id="pause", method="POST", action="/room/" + roomName + "/pause")
-                                        //- TODO: csrf
-                                        button(type="submit")= "pause"
-                                else
-                                    form(id="play", method="POST", action="/room/" + roomName + "/play")
-                                        //- TODO: csrf
-                                        button(type="submit")= "play"
-                        td
-                            - var action = "";
-                            - var buttonText = "";
+        div.level-right
+            div.spotify-search.has-text-centered
+                h2.title.is-size-4 Search for a song or artist!
+                form(name="spotifySearch", method="post", action="/room/" + roomName + "/search")
+                    .field.has-addons
+                        .control
+                            input(type="text", name="searchQuery").input.is-info.is-rounded
+                        .control
+                            .select.is-info.is-rounded
+                                select#searchTypeList(name="searchType")
+                                    option(selected)
+                                        | Track
+                                    option
+                                        | Artist
+                                    //option
+                                    //    | Album
+                                    //option
+                                    //    | Playlist
+                        .control
+                            input(type="submit", value="Search").button.is-success.is-rounded
+
+    div.content
+        if roomCurrentPlaybackState
+                if isOwner
+                    h2.title.is-size-4 Room Controls:
+                else
+                    h2.title.is-size-4 Vote Room Controls:
+                table.table.is-striped.is-hoverable.is-fullwidth.is-narrow
+                    thead
+                        tr
                             if isOwner
-                                - action="/room/" + roomName +"/skip";
-                                - buttonText = "skip"
-                            else
-                                if userVotedToSkipCurrentSong
-                                    - action = "/room/" + roomName + "/skip/unvote";
-                                    - buttonText = "unvote to skip";
+                                th Play
+                            th Skip
+                            th Skip Votes
+                            th Album Cover
+                            th Song Name
+                            th Album
+                            th Artist
+                            th Progress
+                    tbody
+                        tr
+                            if isOwner
+                                td
+                                    if roomCurrentPlaybackState.is_playing
+                                        form(id="pause", method="POST", action="/room/" + roomName + "/pause")
+                                            //- TODO: csrf
+                                            button(type="submit" class="button is-small")= "pause"
+                                    else
+                                        form(id="play", method="POST", action="/room/" + roomName + "/play")
+                                            //- TODO: csrf
+                                            button(type="submit" class="button is-small")= "play"
+                            td
+                                - var action = "";
+                                - var buttonText = "";
+                                if isOwner
+                                    - action="/room/" + roomName +"/skip";
+                                    - buttonText = "skip"
                                 else
-                                    - action = "/room/" + roomName + "/skip/vote";
-                                    - buttonText = "vote to skip";
-                            form(id="skip", method="POST", action=action)
-                                //- TODO: csrf
-                                button(type="submit")= buttonText
-                        td= roomVotesToSkipCurrentSong.length
-                        td
-                            img(src=roomCurrentPlaybackState.item.album.images[0].url, height=64, width=64)
-                        td= roomCurrentPlaybackState.item.name
-                        td= roomCurrentPlaybackState.item.album.name
-                        td= roomCurrentPlaybackState.item.artists[0].name
-                        td= roomCurrentPlaybackState.progress_ms/roomCurrentPlaybackState.item.duration_ms
-    else
-        p No currently playing song
-
-    form(name="spotifySearch", method="post", action="/room/" + roomName + "/search")
-        .field.has-addons
-            .control
-                input(type="text", name="searchQuery").input.is-info.is-rounded
-            .control
-                .select.is-info.is-rounded
-                    select#searchTypeList(name="searchType")
-                        option(selected)
-                            | Track
-                        option
-                            | Artist
-                        //option
-                        //    | Album
-                        //option
-                        //    | Playlist
-            .control
-                input(type="submit", value="Search").button.is-success.is-rounded
+                                    if userVotedToSkipCurrentSong
+                                        - action = "/room/" + roomName + "/skip/unvote";
+                                        - buttonText = "unvote to skip";
+                                    else
+                                        - action = "/room/" + roomName + "/skip/vote";
+                                        - buttonText = "vote to skip";
+                                form(id="skip", method="POST", action=action)
+                                    //- TODO: csrf
+                                    button(type="submit" class="button is-small")= buttonText
+                            td= roomVotesToSkipCurrentSong.length
+                            td
+                                img(src=roomCurrentPlaybackState.item.album.images[0].url, height=64, width=64)
+                            td= roomCurrentPlaybackState.item.name
+                            td= roomCurrentPlaybackState.item.album.name
+                            td= roomCurrentPlaybackState.item.artists[0].name
+                            td
+                                - var progressPercent = (roomCurrentPlaybackState.progress_ms/roomCurrentPlaybackState.item.duration_ms) * 100;
+                                progress(class="progress" value=progressPercent max="100")= progressPercent
+        else
+            p Nothing is currently playing!
+    hr
 
     block roomContent
