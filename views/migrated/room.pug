@@ -6,65 +6,65 @@ block roomContent
         div.play-queue
             h2.title.is-size-4 Queue:
             if queue.length > 0
-                table.table.is-bordered.is-striped.is-hoverable.is-fullwidth.is-narrow
+                table.table.is-striped.is-hoverable.is-fullwidth.is-narrow
                     thead
                         tr
                             th Position
-                            th Up Doot
-                            th Down Doot
-                            th Votes to Skip
                             th Album Cover
                             th Song Name
                             th Album
                             th Artist
                             th Length
+                            th Votes to Skip
                             th Votes To Remove
-                            if isOwner
-                                th Remove
-                            else
-                                th Vote to Remove
+                            th Actions
                     tbody
                         each track in queue
                             tr
                                 td= track.position
-                                td
-                                    form(id=track.id + "-vote", method="POST", action="/room/" + roomName + "/vote")
-                                        //- TODO: csrf
-                                        input(type="hidden", name="songId", value=track.id)
-                                        button(type="submit" class="button is-small")
-                                            ="+"
-                                td
-                                    form(id=track.id + "-unvote", method="POST", action="/room/" + roomName + "/unvote")
-                                        //- TODO: csrf
-                                        input(type="hidden", name="songId", value=track.id)
-                                        button(type="submit" class="button is-small")
-                                            ="-"
-                                td= track.votedToSkipUsers.size
                                 td
                                     img(src=track.albumImage, height=64, width=64)
                                 td= track.name
                                 td= track.albumName
                                 td= track.artistName
                                 td= track.duration
+                                td= track.votedToSkipUsers.size
                                 td= track.votedToRemoveUsers.size
-                                if isOwner
-                                    td
-                                        form(id="#{track.id}-remove", method="POST", action="/room/" + roomName + "/remove/" + track.id)
-                                            //- TODO: csrf
-                                            input(type="hidden", name="trackId", value=track.id)
-                                            button(type="submit" class="button is-small")= "remove"
-                                else
-                                    td
-                                        if track.currentUserVotedToRemove
-                                            - action = "/" + roomName + "/remove/" + track.id + "/unvote/";
-                                            - text = "unvote";
-                                        else
-                                            - action = "/" + roomName + "/remove/" + track.id + "/vote/";
-                                            - text = "vote";
-                                        form(id="#{track.id}-remove-#[text}", method="POST", action=action)
-                                            //- TODO: csrf
-                                            input(type="hidden", name="trackId", value=track.id)
-                                            button(type="submit" class="button is-small")= text + " to remove"
+                                td
+                                    .level
+                                        .up-vote.level-item
+                                            form(id=track.id + "-vote", method="POST", action="/room/" + roomName + "/vote")
+                                                //- TODO: csrf
+                                                input(type="hidden", name="songId", value=track.id)
+                                                button(type="submit" class="button icon" title="vote for song")
+                                                    i.fas.fa-arrow-up
+
+                                        .down-vote.level-item
+                                            form(id=track.id + "-unvote", method="POST", action="/room/" + roomName + "/unvote")
+                                                //- TODO: csrf
+                                                input(type="hidden", name="songId", value=track.id)
+                                                button(type="submit" class="button icon" title="remove vote")
+                                                    i.fas.fa-arrow-down
+
+                                        .remove-vote.level-item
+                                            if isOwner
+                                                form(id="#{track.id}-remove", method="POST", action="/room/" + roomName + "/remove/" + track.id)
+                                                    //- TODO: csrf
+                                                    input(type="hidden", name="trackId", value=track.id)
+                                                    button(type="submit" class="icon button" title="remove")
+                                                        i.fas.fa-trash-alt
+                                            else
+                                                if track.currentUserVotedToRemove
+                                                    - action = "/" + roomName + "/remove/" + track.id + "/unvote/";
+                                                    - titleText = "vote to remove";
+                                                else
+                                                    - action = "/" + roomName + "/remove/" + track.id + "/vote/";
+                                                    - titleText = "remove vote";
+                                                form(id="#{track.id}-remove-#{text}", method="POST", action=action)
+                                                    //- TODO: csrf
+                                                    input(type="hidden", name="trackId", value=track.id)
+                                                    button(type="submit" class="button icon" title=titleText)
+                                                        i.fas.fa-trash-alt
             else
                 p.subtitle Nothing in queue!
 

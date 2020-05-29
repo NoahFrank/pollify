@@ -38,44 +38,15 @@ block content
                 table.table.is-striped.is-hoverable.is-fullwidth.is-narrow
                     thead
                         tr
-                            if isOwner
-                                th Play
-                            th Skip
-                            th Skip Votes
                             th Album Cover
                             th Song Name
                             th Album
                             th Artist
                             th Progress
+                            th Skip Votes
+                            th Actions
                     tbody
                         tr
-                            if isOwner
-                                td
-                                    if roomCurrentPlaybackState.is_playing
-                                        form(id="pause", method="POST", action="/room/" + roomName + "/pause")
-                                            //- TODO: csrf
-                                            button(type="submit" class="button is-small")= "pause"
-                                    else
-                                        form(id="play", method="POST", action="/room/" + roomName + "/play")
-                                            //- TODO: csrf
-                                            button(type="submit" class="button is-small")= "play"
-                            td
-                                - var action = "";
-                                - var buttonText = "";
-                                if isOwner
-                                    - action="/room/" + roomName +"/skip";
-                                    - buttonText = "skip"
-                                else
-                                    if userVotedToSkipCurrentSong
-                                        - action = "/room/" + roomName + "/skip/unvote";
-                                        - buttonText = "unvote to skip";
-                                    else
-                                        - action = "/room/" + roomName + "/skip/vote";
-                                        - buttonText = "vote to skip";
-                                form(id="skip", method="POST", action=action)
-                                    //- TODO: csrf
-                                    button(type="submit" class="button is-small")= buttonText
-                            td= roomVotesToSkipCurrentSong.length
                             td
                                 img(src=roomCurrentPlaybackState.item.album.images[0].url, height=64, width=64)
                             td= roomCurrentPlaybackState.item.name
@@ -84,6 +55,44 @@ block content
                             td
                                 - var progressPercent = (roomCurrentPlaybackState.progress_ms/roomCurrentPlaybackState.item.duration_ms) * 100;
                                 progress(class="progress" value=progressPercent max="100")= progressPercent
+                            td= roomVotesToSkipCurrentSong.length
+                            td
+                                .level
+                                    if isOwner
+                                        .playback-control.level-item
+                                            if roomCurrentPlaybackState.is_playing
+                                                form(id="pause", method="POST", action="/room/" + roomName + "/pause")
+                                                    //- TODO: csrf
+                                                    button(type="submit" class="button icon" title="pause")
+                                                        i.fas.fa-pause
+                                            else
+                                                form(id="play", method="POST", action="/room/" + roomName + "/play")
+                                                    //- TODO: csrf
+                                                    button(type="submit" class="button icon" title="play")
+                                                        i.fas.fa-play
+                                    .vote-skip.level-item
+                                        - var action = "";
+                                        - var buttonText = "";
+                                        if isOwner
+                                            - action="/room/" + roomName +"/skip";
+                                        else
+                                            if userVotedToSkipCurrentSong
+                                                - action = "/room/" + roomName + "/skip/unvote";
+                                            else
+                                                - action = "/room/" + roomName + "/skip/vote";
+                                        form(id="skip", method="POST", action=action)
+                                            //- TODO: csrf
+                                            if isOwner
+                                                button(type="submit" class="button icon" title="skip")
+                                                    i.fas.fa-forward
+                                            else
+                                                if userVotedToSkipCurrentSong
+                                                    button(type="submit" class="button icon" title="skip vote")
+                                                        i.fas.fa-forward
+                                                else
+                                                    button(type="submit" class="button icon" title="vote to skip")
+                                                        i.fas.fa-forward
+
         else
             p Nothing is currently playing!
     hr
