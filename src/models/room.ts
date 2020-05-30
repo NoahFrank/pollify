@@ -26,7 +26,7 @@ export class Room {
     // Also create a dedicated instance of SpotifyWebApi to make ALL requests for this Room using the given Owner authorized credentials
     spotify: SpotifyWebApi;
     // Keep track of when the owner is actively using their managed pollify playlist (aka using pollify)
-    active: boolean; 
+    active: boolean;
 
     constructor(owner: Owner) {
         // TODO check for collision of Moniker name generation, two rooms with same name would likely throw many errors
@@ -288,6 +288,11 @@ export class Room {
     }
 
     async updateRoomStatus(currentPlaybackState: SpotifyApi.CurrentlyPlayingObject) {
+        if (currentPlaybackState === null) {
+            logger.debug("The User currently doesn't have a playback state.");
+            this.active = false;
+            return;
+        }
         const playlistUriList: Array<string> = currentPlaybackState.context.uri.split(":");
         if (playlistUriList.length == 3) {
             const playlistId: string = playlistUriList[2];
