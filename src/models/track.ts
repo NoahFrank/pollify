@@ -82,6 +82,7 @@ export class Track {
                 this.artistName = track.body.artists[0].name;
                 this.popularity = track.body.popularity;
                 this.duration_ms = track.body.duration_ms;
+                this.setDuration(track.body.duration_ms);
 
                 this.uri = track.body.uri;
                 this.track_number = track.body.track_number;

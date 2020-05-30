@@ -108,6 +108,10 @@ export const findRoom = async (req: Request, res: Response, next: NextFunction) 
         try {
             // Get room's current playback to pass to view
             const currentPlaybackState = await room.getCurrentPlayback();
+
+            // Update room to determine if the owner is currently utilizing their currently allotted pollify room playlist or just their normal spotify
+            await room.updateRoomStatus(currentPlaybackState);
+
             room.save(cache)
                 .then((success) => {
                     logger.info(`Rendering ${roomId}`);
@@ -127,6 +131,7 @@ export const findRoom = async (req: Request, res: Response, next: NextFunction) 
                 }
                 );
         } catch (err) {
+            logger.error(`Failure when attempting to serve roomId=${roomId} because -> ${err}`);
             return res.sendStatus(500);
         }
     } catch (err) {

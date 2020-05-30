@@ -1,7 +1,7 @@
 nav.navbar(role='navigation', aria-label='main navigation').is-fixed-top.has-background-primary
     .navbar-brand
         a.navbar-item(href='/')
-            img(src='/favicon.ico')
+            img(src='/images/favicon.png')
         a.navbar-burger.burger(role='button', aria-label='menu', aria-expanded='false', data-target='navbarBasicExample')
             span(aria-hidden='true')
             //span(aria-hidden='true')
@@ -28,7 +28,7 @@ nav.navbar(role='navigation', aria-label='main navigation').is-fixed-top.has-bac
         .navbar-end
             .navbar-item
                 .buttons
-                    a.button.is-primary
+                    a(href="/").button.is-primary
                         strong Join Room
-                    a(href="/auth/spotify").button.is-light
+                    a(href="/auth/spotify/login").button.is-light
                         | Log In
