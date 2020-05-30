@@ -107,6 +107,5 @@ export class Track {
 
     setDuration(duration: number) {
         this.duration = convertMilliToReadable(duration);
-        const i = 0;
     }
 }
