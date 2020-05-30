@@ -21,10 +21,12 @@ export class Room {
     // array of track objects that reflects the current top voted songs
     trackList: Array<Track>;
     users: Set<string>;
-    currentPlaybackState: SpotifyApi.PlaybackObject;
+    currentPlaybackState: SpotifyApi.CurrentlyPlayingObject;
     votesToSkipCurrentSong: Set<number>;
     // Also create a dedicated instance of SpotifyWebApi to make ALL requests for this Room using the given Owner authorized credentials
     spotify: SpotifyWebApi;
+    // Keep track of when the owner is actively using their managed pollify playlist (aka using pollify)
+    active: boolean; 
 
     constructor(owner: Owner) {
         // TODO check for collision of Moniker name generation, two rooms with same name would likely throw many errors
@@ -40,6 +42,9 @@ export class Room {
 
         // Also create a dedicated instance of SpotifyWebApi to make ALL requests for this Room using the given Owner authorized credentials
         this.spotify = Spotify.new(owner);
+
+        // Default to inactive until we determine the Owner has started using pollify to prevent interference with spotify playback
+        this.active = false;
     }
 
     isPlaylistCreated() {
@@ -266,7 +271,7 @@ export class Room {
         return this.owner.sessionId === sessionId;
     }
 
-    async getCurrentPlayback() {
+    async getCurrentPlayback(): Promise<SpotifyApi.CurrentlyPlayingObject> {
         // Get room's current playback
         try {
             const playback = await this.spotify.getMyCurrentPlaybackState();
@@ -279,6 +284,29 @@ export class Room {
         } catch (err) {
             logger.error(`Failed to get Room ${this.name}'s current playback state with error=${err} and message=${err.message} and stacktrace=${err.stack}`);
             throw err;
+        }
+    }
+
+    async updateRoomStatus(currentPlaybackState: SpotifyApi.CurrentlyPlayingObject) {
+        const playlistUriList: Array<string> = currentPlaybackState.context.uri.split(":");
+        if (playlistUriList.length == 3) {
+            const playlistId: string = playlistUriList[2];
+
+            // Query spotify api to discover what playlist the owner is currently playing
+            const currentlyPlayingPlaylistResponse = await this.spotify.getPlaylist(playlistId);
+            const currentlyPlayingPlaylist = currentlyPlayingPlaylistResponse.body;
+
+            // If the current playlist of the Owner is our managed pollify playlist for this room, then room is active!
+            if (currentlyPlayingPlaylist.name == this.name) {
+                logger.debug("MATCHING PLAYLIST WITH ROOM, CURRENTLY IN POLLIFY GO STATE");
+                this.active = true;
+            } else {
+                logger.debug("MISMATCHING PLAYLIST WITH ROOM, CURRENTLY IN NORMAL USER SPOTIFY STATE");
+                this.active = false;
+            }
+        } else {
+            logger.error(`Unable to update room (${this.name}) status`);
+            logger.error(`Why would the format 'spotify:playlist:37i9dQZF1E34T4WDQivGe3' ever not have a length of 3 when split by ':', attempting to split -> '${currentPlaybackState.context.uri}'`);
         }
     }
 
