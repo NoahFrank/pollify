@@ -2,14 +2,14 @@ extends layout
 
 block content
 
-    div.level
-        div.level-left
-            div.content
-                h1.title.is-1 Welcome to #{roomName}
+    .level
+        section.section.level-left
+            .content
+                h1.title Welcome to #{roomName}
                 p.subtitle Queue a song or vote on what you want to hear next!
 
-        div.level-right
-            div.spotify-search.has-text-centered
+        .level-right
+            .spotify-search.has-text-centered
                 h2.title.is-size-4 Search for a song or artist
                 form(name="spotifySearch", method="post", action="/room/" + roomName + "/search")
                     .field.has-addons
@@ -28,8 +28,9 @@ block content
                                     //    | Playlist
                         .control
                             input(type="submit", value="Search").button.is-success.is-rounded
+    hr
 
-    div.content
+    .content
         if roomCurrentPlaybackState
             if isOwner
                 h2.title.is-size-4 Room Controls:
@@ -95,6 +96,5 @@ block content
 
         else
             p Nothing is currently playing!
-    hr
 
     block roomContent

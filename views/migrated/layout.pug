@@ -1,5 +1,5 @@
 doctype html
-html(lang='en')
+html(lang='en' style="margin: 0; height: 100%;")
     head
         meta(charset='UTF-8')
         meta(name='viewport', content="width=device-width, initial-scale=1")
@@ -12,8 +12,8 @@ html(lang='en')
         block css
         block js
 
-    body.has-navbar-fixed-top
+    body(style="margin: 0; height: 100%;").has-navbar-fixed-top
         include navbar
-        section.section.is-medium
-            .container
+        div(style="margin: 0; height: 100%;").is-medium.has-background-white
+            div(style="height: 100%;").main.container.has-background-white
                 block content
