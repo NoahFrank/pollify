@@ -13,8 +13,10 @@ block content
                 h2.title.is-size-4 Search for a song or artist
                 form(name="spotifySearch", method="post", action="/room/" + roomName + "/search")
                     .field.has-addons
-                        .control
-                            input(type="text", name="searchQuery").input.is-info.is-rounded
+                        .control.has-icons-left
+                            input(type="text" name="searchQuery" placeholder="Search").input.is-info.is-rounded
+                            span.icon.is-left
+                                i.fas.fa-search
                         .control
                             .select.is-info.is-rounded
                                 select#searchTypeList(name="searchType")
