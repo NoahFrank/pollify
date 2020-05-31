@@ -293,9 +293,14 @@ export class Room {
             this.active = false;
             return;
         }
+        if (currentPlaybackState.context === null) {
+            logger.debug("Current playback doesn't have a context.");
+            this.active = false;
+            return;
+        }
         const playlistUriList: Array<string> = currentPlaybackState.context.uri.split(":");
-        if (playlistUriList.length == 3) {
-            const playlistId: string = playlistUriList[2];
+        if (playlistUriList.length > 0) {
+            const playlistId: string = playlistUriList[playlistUriList.length - 1];
 
             // Query spotify api to discover what playlist the owner is currently playing
             const currentlyPlayingPlaylistResponse = await this.spotify.getPlaylist(playlistId);
