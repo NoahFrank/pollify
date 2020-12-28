@@ -14,7 +14,7 @@ import { Track } from "../models/track";
 // Setup logging
 import logger from "../util/logger";
 import { User } from "../models/user";
-import SpotifyWebApi from "spotify-web-api-node";
+import { exception } from "console";
 
 // Required spotify account scope for pollify
 const AUTH_SCOPE = [
@@ -216,13 +216,23 @@ const spotifyCallbackSuccess = async (tokenResponse: SpotifyTokenResponse, req: 
             const responseData: SpotifyResponse<SpotifyApi.ListOfUsersPlaylistsResponse> = await newRoom.spotify.getUserPlaylists(newRoom.owner.id);
             const data: SpotifyApi.ListOfUsersPlaylistsResponse = responseData.body;
 
-            let firstInstanceOfPlaylist;
+            let firstInstanceOfPlaylist: SpotifyApi.PlaylistObjectSimplified;
             for (const playlist of data.items) {
                 if (playlist.name === newRoom.name) {
                     logger.debug(`Found an instance of playlist: ${playlist.name}`);
                     firstInstanceOfPlaylist = playlist;
                     break;
                 }
+            }
+            if (!firstInstanceOfPlaylist) {
+                // the playlist wasn't already found so lets create a new one
+                const resp = await newRoom.spotify.createPlaylist(newRoom.owner.id, newRoom.name);
+                if (resp.statusCode != 201) {
+                    logger.error(`Failed to create new playlist corresponding to the newly created room. OwnerId=${newRoom.owner.id} RoomName=${newRoom.name} Resp=${JSON.stringify( resp)}`);
+                    throw exception;
+                }
+                firstInstanceOfPlaylist = resp.body;
+                logger.info(`Created new playlist for the newly created room. PlaylistName=${firstInstanceOfPlaylist.name}`);
             }
             newRoom.playlistId = firstInstanceOfPlaylist.id;
 
