@@ -20,6 +20,7 @@ WORKDIR /opt/pollify
 
 COPY --from=build-image /opt/pollify/dist ./dist
 COPY --from=build-image /opt/pollify/node_modules ./node_modules
+COPY --from=build-image /opt/pollify/views ./views
 
 ARG ENVIRONMENT=production
 ARG LOG_LEVEL=INFO

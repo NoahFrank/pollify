@@ -32,7 +32,8 @@ const AUTH_SCOPE = [
 ];
 
 // START CONFIG
-const REDIRECT_URI = "http://localhost:3000/auth/spotify/callback";
+const DEV_REDIRECT_URI = "http://localhost:3000/auth/spotify/callback";
+const PROD_REDIRECT_URI = "https://pollify-nc.herokuapp.com/auth/spotify/callback";
 
 // Define unique key to store user's auth state into a cookie - can leave as default
 const STATE_KEY = "spotify_auth_state";
@@ -48,7 +49,7 @@ export const loginStartAuth = (req: Request, res: Response) => {
             response_type: "code",
             client_id: SPOTIFY_APP_ID,
             scope: AUTH_SCOPE.join(" "),
-            redirect_uri: REDIRECT_URI,
+            redirect_uri: prod ? PROD_REDIRECT_URI : DEV_REDIRECT_URI,
             state: state
         }));
 };
@@ -79,7 +80,7 @@ export const loginAuthCallback = (req: Request, res: Response) => {
         url: "https://accounts.spotify.com/api/token",
         form: {
             code: code,
-            redirect_uri: REDIRECT_URI,
+            redirect_uri: prod ? PROD_REDIRECT_URI : DEV_REDIRECT_URI,
             grant_type: "authorization_code"
         },
         headers: {
