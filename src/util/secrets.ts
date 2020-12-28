@@ -2,7 +2,7 @@ import logger from "./logger";
 import dotenv from "dotenv";
 import fs from "fs";
 export const ENVIRONMENT = process.env.NODE_ENV;
-const prod = ENVIRONMENT === "production"; // Anything else is treated as 'dev'
+export const prod = ENVIRONMENT === "production"; // Anything else is treated as 'dev'
 logger.info(`Server configuration is set to: ENVIRONMENT=${ENVIRONMENT}`);
 
 if (!prod) {

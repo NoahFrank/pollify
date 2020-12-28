@@ -298,6 +298,7 @@ export class Room {
             this.active = false;
             return;
         }
+        logger.info(`Found playback context. Context=${currentPlaybackState.context}`);
         const playlistUriList: Array<string> = currentPlaybackState.context.uri.split(":");
         if (playlistUriList.length > 0) {
             const playlistId: string = playlistUriList[playlistUriList.length - 1];

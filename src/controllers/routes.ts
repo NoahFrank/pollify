@@ -115,6 +115,7 @@ export const findRoom = async (req: Request, res: Response, next: NextFunction) 
             room.save(cache)
                 .then((success) => {
                     logger.info(`Rendering ${roomId}`);
+                    logger.debug(`Current playback state. CurrentPlaybackState=${JSON.stringify(currentPlaybackState)}`);
                     res.render("migrated/room", {
                         roomName: room.name,
                         isOwner: room.isOwner(req.cookies.pollifySession),

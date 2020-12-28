@@ -33,7 +33,7 @@ block content
     hr
 
     .content
-        if roomCurrentPlaybackState
+        if roomCurrentPlaybackState && roomCurrentPlaybackState.item
             if isOwner
                 h2.title.is-size-4 Room Controls:
             else
