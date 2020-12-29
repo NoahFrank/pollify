@@ -1,20 +1,14 @@
-// const express = require("express");
-// const router = express.Router();
-
 import { SPOTIFY_APP_ID, SPOTIFY_APP_SECRET, prod } from "../util/secrets";
-
 import { Request, Response } from "express";
 import querystring from "query-string";
 import request from "request";
-
 import { Room } from "../models/room";
 import { Owner } from "../models/owner";
 import { Track } from "../models/track";
-
-// Setup logging
 import logger from "../util/logger";
-import { User } from "../models/user";
+import { getOrCreateUser } from "../models/user";
 import { exception } from "console";
+import { setPollifySession, POLLIFY_SESSION } from "../util/helper";
 
 // Required spotify account scope for pollify
 const AUTH_SCOPE = [
@@ -195,12 +189,12 @@ const spotifyCallbackSuccess = async (tokenResponse: SpotifyTokenResponse, req: 
             res.redirect("/");
         }
 
-        // Attempt to find session and if it doesn't exist create one for this user
-        let pollifySession: string = req.cookies.pollifySession;
-        if (!pollifySession) {
-            pollifySession = User.createUserSession(req, res).toString();
-        }
-        const newOwner = new Owner(pollifySession, body.id, body.display_name, body.email, tokenResponse.access_token, tokenResponse.refresh_token, tokenExpirationEpoch);
+        const pollifySession = req.cookies[POLLIFY_SESSION];
+        const user = await getOrCreateUser(pollifySession, req.connection.remoteAddress, "Owner");
+        if (!pollifySession)
+            setPollifySession(user.sessionId, res);
+
+        const newOwner = new Owner(user, body.id, body.display_name, body.email, tokenResponse.access_token, tokenResponse.refresh_token, tokenExpirationEpoch);
         const newRoom = new Room(newOwner);
 
         // Also create spotify playlist for this room

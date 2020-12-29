@@ -1,22 +1,23 @@
 import mongoose from "mongoose";
+import { UserDocument } from "./user";
 
 export class Owner {
-    sessionId: string;
     id: string;
     profileName: string;
     profileEmail: string;
     accessToken: string;
     refreshToken: string;
     tokenExpirationEpoch: Date;
+    user: UserDocument
 
-    constructor(sessionId: string, id: string, profileName: string, profileEmail: string, accessToken: string, refreshToken: string, tokenExpirationEpoch: Date) {
-        this.sessionId = sessionId;
+    constructor(user: UserDocument, id: string, profileName: string, profileEmail: string, accessToken: string, refreshToken: string, tokenExpirationEpoch: Date) {
         this.id = id;
         this.profileName = profileName;
         this.profileEmail = profileEmail;
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.tokenExpirationEpoch = tokenExpirationEpoch;
+        this.user = user;
     }
 }
 

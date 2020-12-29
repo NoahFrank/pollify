@@ -1,22 +1,11 @@
-// // const express = require('express');
-// import * as express from "express";
-// const router = express.Router();
-
 import { Room } from "../models/room";
 import { Track } from "../models/track";
 import { Artist } from "../models/artist";
-import { User } from "../models/user";
-
-// // Setup logging
-// import { log } from "../config/logger";
-// import { Application, NextFunction } from "express";
+import { getOrCreateUser, newUser, User, UserDocument } from "../models/user";
 import { Request, Response, NextFunction } from "express-serve-static-core";
 import logger from "../util/logger";
-// import { app } from "../app";
-
-// module.exports = (app: Application) => {
-//     app.use("/", router);
-// };
+import { setPollifySession, POLLIFY_SESSION } from "../util/helper";
+import * as _ from "lodash";
 
 function noRoomPlaylistError(roomId: string, res: Response, next: NextFunction) {
     logger.error(`This room (${roomId}) has no linked playlist!  That's a huge problem...`);
@@ -81,14 +70,18 @@ export const findRoom = async (req: Request, res: Response, next: NextFunction) 
 
     try {
         const room = await Room.get(roomId, cache);
-        const userSession: string = req.cookies.pollifySession;
-        if (!userSession) {
-            logger.debug(`*** Found user session ${userSession} was undefined so lets define it.`);
-            User.createUserSession(req, res);
-        } else {
-            // Only save this user to the room's internal user list
-            // if the user isn't undefined.
-            room.users.add(userSession);
+        const userSession: number = req.cookies[POLLIFY_SESSION];
+        const user = userSession ? await User.findOne({sessionId: userSession}) : null;
+        if (!userSession && !user) {
+            logger.error(`Failed to find users authentication. Session=${userSession} User=${user}`);
+            return res.redirect("/");
+        }
+        const existsInRoom = _.find(room.users, (user: UserDocument) => {
+            return user.sessionId == userSession;
+        });
+        if (!existsInRoom) {
+            logger.debug(`Added requesting user to room.users. User=${user} Exists=${existsInRoom}`);
+            room.users.push(user);
         }
 
         // TODO: Get current playlist "queue" state and pass to view
@@ -101,7 +94,7 @@ export const findRoom = async (req: Request, res: Response, next: NextFunction) 
             // Create a slimmed down version of Track for rendering view with buildTrackView
             const manipulatedTrack = Track.copy(track);
             // determine if the request user has voted to remove this track or not
-            manipulatedTrack.currentUserVotedToRemove = track.votedToRemoveUsers.has(userSession);
+            manipulatedTrack.currentUserVotedToRemove = track.votedToRemoveUsers.has(userSession.toString());
             trackViewList.push(manipulatedTrack);
         }
 
@@ -345,7 +338,7 @@ export const roomSkipUnvote = async (req: Request, res: Response, next: NextFunc
     }
 };
 
-export const roomJoin = (req: Request, res: Response, next: NextFunction) => {
+export const roomJoin = async (req: Request, res: Response, next: NextFunction) => {
     const roomId = req.body.roomId;
     const cache = req.app.get("cache");
 
@@ -361,7 +354,15 @@ export const roomJoin = (req: Request, res: Response, next: NextFunction) => {
         res.sendStatus(404);
     } else {  // 0 or timestamp of how long key-value will be in cache
         // save this user to the room's internal user list
-        res.redirect(`/room/${roomId}`);
+        try {
+            const user = await getOrCreateUser(null, req.connection.remoteAddress, req.body.nickname);
+            await user.save();
+            setPollifySession(user.sessionId, res);
+            res.redirect(`/room/${roomId}`);
+        } catch (e) {
+            logger.error(`Failed to create user in roomJoin. Err=${e}`);
+            res.redirect("/");
+        }
     }
 };
 
@@ -379,8 +380,13 @@ export const roomTrackAdd = async (req: Request, res: Response, next: NextFuncti
         // 1. Get room and spotify instance for this room
         const room = await Room.get(roomId, cache);
         // 2. Construct new Track object with suggestor and populate Track data with getTrackById
-        // TODO: Determine suggestor's name and attach it to Track by passing to constructor
-        const newTrack = await new Track(new User("Bob")).getTrackById(room.spotify, trackId); // Wait for track to populate data from spotify api with getTrackById
+        const userSession = req.cookies[POLLIFY_SESSION];
+        const user = userSession ? await User.findOne({sessionId: userSession}) : null;
+        if (!userSession && !user) {
+            logger.error(`Failed to find users authentication. Session=${userSession} User=${user}`);
+            return res.redirect(`/room/${room.name}`);
+        }
+        const newTrack = await new Track(user).getTrackById(room.spotify, trackId); // Wait for track to populate data from spotify api with getTrackById
         // 3. Done populating Track!  Now make sure to actually add track to room playlist and redirect back to room after successful queue add
         if (!room.isPlaylistCreated()) {  // Sanity check to ensure the Room actually created a Playlist
             return noRoomPlaylistError(roomId, res, next);
@@ -585,18 +591,20 @@ export const roomGetTopSongsForArtist = async (req: Request, res: Response) => {
     }
 };
 
-export const roomUserRemove = (req: Request, res: Response) => {
+export const roomUserRemove = async (req: Request, res: Response) => {
     const roomId = req.params.roomId;
-    if (req.cookies.pollifySession) {
-        const cache = req.app.get("cache");
-        Room.get(roomId, cache)
-            .then((room) => {
-                room.users.delete(req.cookies.pollifySession);
-                room.save(cache);
-                res.sendStatus(204);
-            })
-            .catch((err) => {
-                res.sendStatus(404);
-            });
+    const userSession = req.cookies[POLLIFY_SESSION];
+    if (!userSession) {
+        res.sendStatus(404);
+    }
+    const cache = req.app.get("cache");
+    try {
+        const room = await Room.get(roomId, cache);
+        _.remove(room.users, (user) => user.sessionId == userSession);
+        room.save(cache);
+        res.sendStatus(204);
+    } catch (e) {
+        logger.error(`Failed to remove user from room. RoomId=${roomId} Err=${e}`);
+        res.sendStatus(404);
     }
 };
