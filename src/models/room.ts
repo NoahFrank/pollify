@@ -1,12 +1,9 @@
 const Moniker = require("moniker");
 import { Track } from "./track";
-import { User } from "./user";
 import { Owner } from "./owner";
 import { Spotify } from "./spotify";
-
+import { UserDocument } from "../models/user";
 import SpotifyWebApi from "spotify-web-api-node";
-
-// Setup logging
 import logger from "../util/logger";
 
 // CONSTANTS
@@ -20,7 +17,7 @@ export class Room {
     playlistId: string;
     // array of track objects that reflects the current top voted songs
     trackList: Array<Track>;
-    users: Set<string>;
+    users: Array<UserDocument>;
     currentPlaybackState: SpotifyApi.CurrentlyPlayingObject;
     votesToSkipCurrentSong: Set<number>;
     // Also create a dedicated instance of SpotifyWebApi to make ALL requests for this Room using the given Owner authorized credentials
@@ -28,23 +25,28 @@ export class Room {
     // Keep track of when the owner is actively using their managed pollify playlist (aka using pollify)
     active: boolean;
 
-    constructor(owner: Owner) {
+    constructor(owner?: Owner) {
         // TODO check for collision of Moniker name generation, two rooms with same name would likely throw many errors
         this.name = Moniker.generator([Moniker.adjective, Moniker.noun]).choose();
-        this.owner = owner;
         this.playlistId = null;
         // array of track objects that reflects the current top voted songs
         this.trackList = [];
-        this.users = new Set();
+        this.users = [];
 
         this.currentPlaybackState = null;
         this.votesToSkipCurrentSong = new Set();
 
-        // Also create a dedicated instance of SpotifyWebApi to make ALL requests for this Room using the given Owner authorized credentials
-        this.spotify = Spotify.new(owner);
+        if (owner) {
+            this.setOwner(owner);
+        }
 
         // Default to inactive until we determine the Owner has started using pollify to prevent interference with spotify playback
         this.active = false;
+    }
+
+    setOwner(owner: Owner) {
+        this.owner = owner;
+        this.spotify = Spotify.new(owner);
     }
 
     isPlaylistCreated() {
@@ -183,7 +185,7 @@ export class Room {
         }
         track.votedToRemoveUsers.add(sessionId);
         // This if condition is the skip vote threshold ALGORITHM
-        if (Math.floor(track.votedToRemoveUsers.size / this.users.size) > 0.5) {
+        if (Math.floor(track.votedToRemoveUsers.size / this.users.length) > 0.5) {
             const thisRoom = this;
             try {
                 this.removeTrack(track.id, cache, callback);
@@ -224,7 +226,7 @@ export class Room {
 
     // TODO: Remove this legacy code - make sure UI is getting what it needs in routes.ts
     getSetAsArray(attr: string) {
-        return Array.from(this.users);
+        return this.users;
     }
 
     songSort(a: Track, b: Track) {
@@ -268,7 +270,7 @@ export class Room {
     }
 
     isOwner(sessionId: string) {
-        return this.owner.sessionId === sessionId;
+        return this.owner.user.sessionId == +sessionId;
     }
 
     async getCurrentPlayback(): Promise<SpotifyApi.CurrentlyPlayingObject> {
@@ -328,7 +330,7 @@ export class Room {
         }
         this.votesToSkipCurrentSong.add(sessionId);
         // This if condition is the skip vote threshold ALGORITHM
-        if (Math.floor(this.votesToSkipCurrentSong.size / this.users.size) > 0.5) {
+        if (Math.floor(this.votesToSkipCurrentSong.size / this.users.length) > 0.5) {
             const thisRoom = this;
             try {
                 const context = await this.spotify.skipToNext();

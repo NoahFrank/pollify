@@ -1,6 +1,6 @@
 // Setup logging
 import logger from "../util/logger";
-import { User } from "./user";
+import { UserDocument } from "../models/user";
 import SpotifyWebApi from "spotify-web-api-node";
 import { convertMilliToReadable } from "../util/helper";
 
@@ -13,7 +13,7 @@ import { convertMilliToReadable } from "../util/helper";
 export class Track {
     votedToSkipUsers: Set<string>;  // This is a set of user session key strings
     votedToRemoveUsers: Set<string>; // This is a set of user session key strings
-    suggestor: User;
+    suggestor: UserDocument;
     id: string;
     name: string;
     albumName: string;
@@ -34,13 +34,13 @@ export class Track {
     href: string;
     album: SpotifyApi.AlbumObjectSimplified;
     artists: Array<SpotifyApi.ArtistObjectSimplified>;
-    users: Array<User>;
+    users: Array<UserDocument>;
     currentUserVotedToRemove: boolean;
 
-    constructor(suggestor?: User) {
+    constructor(suggestor?: UserDocument) {
         this.votedToSkipUsers = new Set();  // This is a set of user session key strings
         this.votedToRemoveUsers = new Set(); // This is a set of user session key strings
-        this.suggestor = suggestor || new User();
+        this.suggestor = suggestor;
         this.id = "";
         this.name = "";
         this.albumName = "";

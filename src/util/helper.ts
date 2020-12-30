@@ -1,5 +1,8 @@
+import { Response } from "express";
 
-export const convertMilliToReadable = (duration: number): string => {
+export const POLLIFY_SESSION = "pollifySession";
+
+function convertMilliToReadable(duration: number): string {
     if (duration < 0) {
         return "";
     }
@@ -15,4 +18,16 @@ export const convertMilliToReadable = (duration: number): string => {
         output = `${hours}:`;
     }
     return `${output}${minutes}:${secondsStr}`;
+};
+
+function setPollifySession(hash: number, res: Response) {
+    res.cookie(POLLIFY_SESSION, hash, {
+      maxAge: 900000,
+      httpOnly: true,
+    });
+}
+
+export {
+    convertMilliToReadable,
+    setPollifySession
 };

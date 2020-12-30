@@ -75,7 +75,7 @@ block roomContent
                     if roomUsers != undefined && roomUsers.length > 0
                         ul
                             each user in roomUsers
-                                li=user
+                                li=user.username
                     else
                         p Currently there are no users
 
