@@ -15,7 +15,7 @@ function closeModal() {
     $("#modal").removeClass("is-active");
 }
 
-function displayArtistTopTracks(roomName, artistId) {
+function displayArtistTopTracks(roomName: string, artistId: number) {
     console.log(`Clicked on artist row with id=${artistId}`);
     // $(`#${artistId}`).first().addClass("is-selected");
 
@@ -26,7 +26,7 @@ function displayArtistTopTracks(roomName, artistId) {
     $.ajax({
         url: `/room/${roomName}/getArtistTopTracks/${artistId}`,
         method: "POST"
-    }).done(function (data) {
+    }).done(function (data: any) {
         let finalGeneratedHtml = "";
         for (const track of data.topTrackData) {  // topTrackData comes from the '/:roomId/:artistId' POST in routes.js
             if (track == undefined) {

@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import fs from "fs";
 export const ENVIRONMENT = process.env.NODE_ENV;
 export const prod = ENVIRONMENT === "production"; // Anything else is treated as 'dev'
-logger.info(`Server configuration is set to: ENVIRONMENT=${ENVIRONMENT}`);
+logger.info(`Server configuration is set to: PROD=${prod}`);
 
 if (!prod) {
     if (fs.existsSync(".env")) {

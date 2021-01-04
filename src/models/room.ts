@@ -241,32 +241,49 @@ export class Room {
     }
 
     async orderSongs() {
-        let output = false;
         // Store the first track in queue for equality check and manipulation
-        const nextTrackPreSort = this.trackList[0];
+        const preSortTrackList = [...this.trackList];
+        const upcomingTrackPreSort = this.trackList[1];
 
-        if (this.trackList.length) {
-            this.trackList.sort(this.songSort);
-            output = true;
+        if (!this.trackList.length) {
+            logger.warn("WARN: Track list is empty, it cannot be sorted");
+            return false;
         }
 
+        // Sort the track list after excluding the current playing song
+        const trackListWithoutPlaying = this.trackList.slice(1);
+        trackListWithoutPlaying.sort(this.songSort);
+
         // If we made sorting changes to the FIRST TRACK IN QUEUE, then update playlist in spotify
-        if (output && !this.trackList[0].equals(nextTrackPreSort)) {
+        if (!trackListWithoutPlaying[0].equals(upcomingTrackPreSort)) {
             // UPDATE SPOTIFY PLAYLIST
-            logger.debug("We are updating FIRST TRACK IN QUEUE because it was changed by sort");
+            logger.debug("We are updating FIRST TRACK IN QUEUE because it was changed by room's tracklist sort");
             // Need to make sure "this.trackList[0].uri" is populated
             if (this.trackList[0].uri.length == 0) {
                 logger.error("First track's uri isn't populated! Huge problem");
                 return false;
             }
             try {
-                await this.spotify.removeTracksFromPlaylist(this.playlistId, [{ uri: this.trackList[0].uri }]);
-                await this.spotify.addTracksToPlaylist(this.playlistId, [this.trackList[0].uri], { position: 0 });
+                // Find the top track of the track list's index location in the current spotify playlist state
+                // preSortTrackList should have the exact state of the room's spotify playlist
+                let trackIndex = 0;
+                const nextTrackUri = this.trackList[0].uri;
+                for (let i = 0; i < preSortTrackList.length; i++) {
+                    const track = preSortTrackList[i];
+                    if (track.uri == nextTrackUri) {
+                        trackIndex = i;
+                        break;
+                    }
+                }
+                
+                // Reorder the the playlist to move the top track
+                await this.spotify.reorderTracksInPlaylist(this.playlistId, trackIndex, 1);
+                logger.debug("Successfully reordered new top track to first position in spotify playlist");
             } catch (err) {
                 logger.error(`Failed to remove or add a track from room's playlist, error=${err} and message=${err.message} and stacktrace=${err.stack}`);
             }
         }
-        return output;
+        return true;
     }
 
     isOwner(sessionId: string) {
