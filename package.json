@@ -41,7 +41,7 @@
         "cookie-parser": "^1.4.5",
         "dotenv": "^8.2.0",
         "errorhandler": "^1.5.1",
-        "express": "^4.17.1",
+        "express": "^4.17.3",
         "express-session": "^1.16.2",
         "express-validator": "^6.2.0",
         "lodash": "^4.17.15",
